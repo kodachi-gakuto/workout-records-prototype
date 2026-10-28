@@ -199,8 +199,8 @@ export function mountRecord(root, ctx, exerciseId) {
     return `<div class="in" data-field="${field}">
       <span class="disp" aria-hidden="true"></span>
       <input type="text" inputmode="${decimal ? 'decimal' : 'numeric'}" ${decimal ? '' : 'pattern="[0-9]*"'}
-        autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done"
-        data-i="${i}" data-field="${field}" aria-label="${i + 1}セット目の${decimal ? '重さ' : '回数'}">
+        name="${field}${i + 1}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        enterkeyhint="done" data-i="${i}" data-field="${field}" aria-label="${i + 1}セット目の${decimal ? '重さ' : '回数'}">
       <span class="unit" aria-hidden="true"></span>
     </div>`;
   }

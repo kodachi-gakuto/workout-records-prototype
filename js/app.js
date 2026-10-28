@@ -73,6 +73,12 @@ function addSampleWithPrevious() {
   commit(ensureTodayWorkout(data, exercise.id, { today: yesterday, sets }).data);
 }
 
+// ホーム画面のアイコンから開いたか
+function displayMode() {
+  const standalone = globalThis.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  return standalone ? 'ホーム画面（standalone）' : 'Safari';
+}
+
 function renderList() {
   const exercises = listExercises(state.data);
   const workouts = Array.isArray(state.data.workouts) ? state.data.workouts.length : 0;
@@ -100,6 +106,7 @@ function renderList() {
         <dt>種目の数</dt><dd>${exercises.length}</dd>
         <dt>記録の数</dt><dd>${workouts}</dd>
         <dt>persist()</dt><dd>${persist}</dd>
+        <dt>表示の形</dt><dd>${displayMode()}</dd>
       </dl>
     </main>`;
   document.getElementById('add-ex').addEventListener('click', () => {
