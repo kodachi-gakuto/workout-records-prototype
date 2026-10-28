@@ -1,0 +1,54 @@
+/* 土台だけ。画面ごとのデザインはまだ作らない */
+:root {
+  --accent: #FC4C02;
+  --text: #222222;
+  --text-sub: #717171;
+  --line: #EBEBEB;
+  --field: #F7F7F7;
+  --bg: #FFFFFF;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent; /* タップしたときの灰色の四角を消す */
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* iOS の文字の大きさの設定に合わせる（使えるブラウザーだけ） */
+@supports (font: -apple-system-body) {
+  body {
+    font: -apple-system-body;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    line-height: 1.5; /* font の一括指定で戻るため書き直す */
+  }
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
