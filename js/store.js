@@ -74,7 +74,9 @@ export function normalize(data) {
 
 // 読めない中身を消さずに別のキーへ退避する。退避に失敗したら例外のまま（wrp:data は変えない）
 function stash(storage, text) {
-  const key = BROKEN_KEY_PREFIX + Date.now();
+  const base = BROKEN_KEY_PREFIX + Date.now();
+  let key = base;
+  for (let n = 2; storage.getItem(key) !== null; n += 1) key = `${base}-${n}`; // 同じ時刻の退避を上書きしない
   storage.setItem(key, text);
   return key;
 }
@@ -86,7 +88,17 @@ export function loadData(storage, { migrations = MIGRATIONS, currentVersion = CU
   const text = s.getItem(STORAGE_KEY);
   if (text === null) return { data: createEmptyData(), recoveredKey: null };
 
-  const recover = () => ({ data: createEmptyData(), recoveredKey: stash(s, text) });
+  // 退避できたら、その場で空のデータを書く（次に読んだときに、また退避しないように）
+  const recover = () => {
+    const recoveredKey = stash(s, text);
+    const data = createEmptyData();
+    try {
+      s.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // 書けなくても、退避はできているので続ける
+    }
+    return { data, recoveredKey };
+  };
 
   let raw;
   try {
@@ -108,18 +120,23 @@ export function loadData(storage, { migrations = MIGRATIONS, currentVersion = CU
 export function saveData(data, storage) {
   try {
     const s = storage ?? globalThis.localStorage;
-    // 新しい版で保存された記録を、古い版で上書きしない
     const saved = s.getItem(STORAGE_KEY);
     if (saved !== null) {
-      let version;
+      let raw;
+      let parsed = true;
       try {
-        version = JSON.parse(saved)?.version;
+        raw = JSON.parse(saved);
       } catch {
-        version = undefined;
+        parsed = false;
       }
-      if (Number.isInteger(version) && version > CURRENT_VERSION) {
-        return { ok: false, error: new Error(`保存済みのデータの版 ${version} がこの版より新しいため保存しません`) };
+      // 新しい版で保存された記録を、古い版で上書きしない
+      if (parsed && hasValidVersion(raw) && raw.version > CURRENT_VERSION) {
+        return { ok: false, error: new Error(`保存済みのデータの版 ${raw.version} がこの版より新しいため保存しません`) };
       }
+      // 読める版でない中身（壊れた JSON・版なし・形がおかしい）は、上書きの前に退避する
+      const readable = parsed && hasValidVersion(raw)
+        && (raw.version < CURRENT_VERSION || normalize(raw) !== null);
+      if (!readable) stash(s, saved);
     }
     s.setItem(STORAGE_KEY, JSON.stringify(data));
     return { ok: true };

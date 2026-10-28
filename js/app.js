@@ -1,39 +1,167 @@
-import { loadData, saveData, requestPersist, CURRENT_VERSION } from './store.js';
+// 起動と画面の行き来（hash）
+// #/ ＝仮の一覧（作業③で「種目を選ぶ」に置きかえる）／#/record/<exerciseId> ＝記録の画面
+import { loadData, saveData, requestPersist, todayString, CURRENT_VERSION } from './store.js';
+import { addExercise, listExercises, ensureTodayWorkout } from './records.js';
+import { mountRecord } from './record-screen.js';
+import { esc, showTopToast } from './ui.js';
 
-const out = document.getElementById('check');
+const app = document.getElementById('app');
+const state = { data: null, recoveredKey: null, persisted: undefined, screen: null, hintMode: 'c' };
 
-function row(label, value) {
-  const dt = document.createElement('dt');
-  dt.textContent = label;
-  const dd = document.createElement('dd');
-  dd.textContent = value;
-  out.append(dt, dd);
+// 薄い値の扱い（a／b／c。ユーザーに選んでもらうまでの仮の切り替え）。wrp:data とは別のキーに覚える
+const HINT_KEY = 'wrp:hint';
+const HINT_MODES = {
+  a: '片方を入れたら、もう片方の薄い値も記録',
+  b: 'タップすると薄い値が入る',
+  c: '薄い値はヒントだけ（記録しない）',
+};
+
+function readHintMode() {
+  let mode = null;
+  try {
+    mode = new URLSearchParams(location.search).get('hint');
+    if (mode in HINT_MODES) localStorage.setItem(HINT_KEY, mode);
+    else mode = localStorage.getItem(HINT_KEY);
+  } catch {
+    // localStorage が使えないときは標準のまま
+  }
+  return mode in HINT_MODES ? mode : 'c';
+}
+
+// data を差しかえて保存する。保存できなかったら上に短く出す
+function commit(data) {
+  state.data = data;
+  const result = saveData(data);
+  if (!result.ok) showTopToast('保存できませんでした');
+  return result;
+}
+
+const ctx = {
+  getData: () => state.data,
+  get hintMode() { return state.hintMode; },
+  commit,
+  // 画面を閉じるときに、画面の状態は変えずに保存だけする
+  saveOnly: (data) => saveData(data),
+  go: (hash) => { location.hash = hash; },
+};
+
+// ---- 仮の一覧 ----
+const SAMPLES = [
+  ['ベンチプレス', 'chest'],
+  ['懸垂', 'back'],
+  ['スクワット', 'legs'],
+  ['インクラインダンベルプレス', 'chest'],
+  ['ショルダープレス', 'shoulders'],
+];
+
+function nextSample() {
+  const names = new Set(listExercises(state.data).map((e) => e.name));
+  for (let n = 1; ; n += 1) {
+    for (const [name, part] of SAMPLES) {
+      const label = n === 1 ? name : `${name} ${n}`;
+      if (!names.has(label)) return { name: label, part };
+    }
+  }
+}
+
+// 昨日の日付で 60kg×10・60kg×8・57.5kg×8 の記録も一緒に作る（試し用）
+function addSampleWithPrevious() {
+  const { data, exercise } = addExercise(state.data, nextSample());
+  const yesterday = todayString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const kg = (weight, reps) => ({ kind: 'kg', weight, reps, assistedReps: null });
+  const sets = [kg(60, 10), kg(60, 8), kg(57.5, 8)];
+  commit(ensureTodayWorkout(data, exercise.id, { today: yesterday, sets }).data);
+}
+
+function renderList() {
+  const exercises = listExercises(state.data);
+  const workouts = Array.isArray(state.data.workouts) ? state.data.workouts.length : 0;
+  const persist = state.persisted === undefined ? '確かめ中'
+    : state.persisted === null ? '使えない' : state.persisted ? '許可された' : '許可されなかった';
+  app.innerHTML = `
+    <main class="list">
+      <h1>種目（仮）</h1>
+      ${exercises.length
+        ? `<ul>${exercises.map((e) => `<li><a href="#/record/${encodeURIComponent(e.id)}">${esc(e.name)}</a></li>`).join('')}</ul>`
+        : '<p class="empty">種目がありません</p>'}
+      <div class="add-row">
+        <button type="button" class="add-ex" id="add-ex">仮の種目を足す</button>
+        <button type="button" class="add-ex" id="add-ex-prev">前回の記録つきの仮の種目を足す</button>
+      </div>
+      <section class="hint-modes" aria-label="薄い値の扱い">
+        <p>薄い値の扱い：今は <b>${state.hintMode.toUpperCase()}</b>（${HINT_MODES[state.hintMode]}）</p>
+        <p>${Object.keys(HINT_MODES).map((m) => m === state.hintMode
+          ? `<b>${m.toUpperCase()}</b>`
+          : `<a href="?hint=${m}#/">${m.toUpperCase()}</a>`).join('／')}</p>
+      </section>
+      <dl class="check" aria-label="確かめ用の表示">
+        ${state.recoveredKey ? '<dt>お知らせ</dt><dd>前のデータを読めなかったため、別の場所に残しました</dd>' : ''}
+        <dt>データの版</dt><dd>${esc(state.data.version)}（アプリ ${CURRENT_VERSION}）</dd>
+        <dt>種目の数</dt><dd>${exercises.length}</dd>
+        <dt>記録の数</dt><dd>${workouts}</dd>
+        <dt>persist()</dt><dd>${persist}</dd>
+      </dl>
+    </main>`;
+  document.getElementById('add-ex').addEventListener('click', () => {
+    commit(addExercise(state.data, nextSample()).data);
+    renderList();
+  });
+  document.getElementById('add-ex-prev').addEventListener('click', () => {
+    addSampleWithPrevious();
+    renderList();
+  });
+}
+
+function route() {
+  state.screen?.unmount();
+  state.screen = null;
+  window.scrollTo(0, 0);
+  const m = location.hash.match(/^#\/record\/(.+)$/);
+  if (m) {
+    let id = null;
+    try {
+      id = decodeURIComponent(m[1]);
+    } catch {
+      id = null; // 壊れた hash は「種目が見つかりません」にする
+    }
+    state.screen = mountRecord(app, ctx, id);
+  } else {
+    renderList();
+  }
+}
+
+// 大きい文字の設定か（標準は 17px）
+function markTextSize() {
+  const size = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  document.documentElement.classList.toggle('lg', size >= 19);
 }
 
 const errorText = (error) =>
   `読み込めませんでした。記録は消えていません。開発者に連絡してください（エラー：${error?.message ?? error}）`;
 
-async function main() {
-  let loaded;
+function main() {
+  markTextSize();
+  state.hintMode = readHintMode();
   try {
-    loaded = loadData();
+    const loaded = loadData();
+    state.data = loaded.data;
+    state.recoveredKey = loaded.recoveredKey;
   } catch (error) {
-    row('読み込み', errorText(error));
-    return; // エラーのときは保存しない
+    // エラーのときは保存しない（画面も出さない）
+    app.innerHTML = `<main class="missing"><p>${esc(errorText(error))}</p></main>`;
+    return;
   }
-  const { data, recoveredKey } = loaded;
-  if (recoveredKey) {
-    row('お知らせ', '前のデータを読めなかったため、別の場所に残しました');
-  }
-  row('データの版', `${data.version}（アプリ ${CURRENT_VERSION}）`);
-  row('種目の数', String(data.exercises.length));
-  row('記録の数', String(data.workouts.length));
-
-  const persisted = await requestPersist();
-  row('persist()', persisted === null ? '使えない' : persisted ? '許可された' : '許可されなかった');
-
-  const result = saveData(data);
-  row('保存のテスト', result.ok ? 'ok' : '失敗：' + (result.error?.message ?? result.error));
+  window.addEventListener('hashchange', route);
+  // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
+  window.addEventListener('pagehide', () => state.screen?.flush());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') state.screen?.flush();
+  });
+  route();
+  requestPersist().then((p) => {
+    state.persisted = p;
+    if (!state.screen) renderList();
+  });
 }
 
-main().catch((error) => row('エラー', errorText(error)));
+main();

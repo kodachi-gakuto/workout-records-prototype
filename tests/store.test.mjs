@@ -229,3 +229,52 @@ test('newId は毎回ちがう文字列', () => {
 test('PARTS は決めた順番', () => {
   assert.deepEqual(PARTS.map((p) => p.id), ['chest', 'back', 'shoulders', 'arms', 'abs', 'legs']);
 });
+
+test('退避したら空のデータを書くので、何回読んでも退避キーは1つだけ', () => {
+  for (const text of ['{壊れた', '{"version":1,"exercises":{}}', '"文字列"']) {
+    const s = fakeStorage();
+    s.setItem(STORAGE_KEY, text);
+    const first = loadData(s);
+    assert.ok(first.recoveredKey);
+    assert.deepEqual(JSON.parse(s.getItem(STORAGE_KEY)), createEmptyData());
+    for (let i = 0; i < 3; i += 1) assert.deepEqual(loadData(s), empty());
+    assert.deepEqual(keysWith(s, BROKEN_KEY_PREFIX), [first.recoveredKey], text);
+    assert.equal(s.getItem(first.recoveredKey), text);
+  }
+});
+
+test('空のデータを書けなくても、退避できていれば読める', () => {
+  const s = fakeStorage();
+  s.setItem(STORAGE_KEY, '{壊れた');
+  const set = s.setItem;
+  s.setItem = (k, v) => { if (k === STORAGE_KEY) throw new Error('QuotaExceededError'); set(k, v); };
+  const r = loadData(s);
+  assert.deepEqual(r.data, createEmptyData());
+  assert.equal(s.getItem(r.recoveredKey), '{壊れた');
+});
+
+test('saveData：今の中身が読める版でないときは、上書きの前に退避する', () => {
+  for (const text of ['{壊れた', '{"exercises":[]}', 'null', '{"version":1,"workouts":"x"}']) {
+    const s = fakeStorage();
+    s.setItem(STORAGE_KEY, text);
+    assert.deepEqual(saveData(createEmptyData(), s), { ok: true });
+    const broken = keysWith(s, BROKEN_KEY_PREFIX);
+    assert.equal(broken.length, 1, text);
+    assert.equal(s.getItem(broken[0]), text);
+    assert.deepEqual(JSON.parse(s.getItem(STORAGE_KEY)), createEmptyData());
+  }
+  // 読める中身なら退避しない
+  const s = fakeStorage();
+  saveData(createEmptyData(), s);
+  saveData(createEmptyData(), s);
+  assert.deepEqual(keysWith(s, BROKEN_KEY_PREFIX), []);
+});
+
+test('saveData：退避に失敗したら上書きせずに { ok: false }', () => {
+  const s = fakeStorage();
+  s.setItem(STORAGE_KEY, '{壊れた');
+  const set = s.setItem;
+  s.setItem = (k, v) => { if (k.startsWith(BROKEN_KEY_PREFIX)) throw new Error('QuotaExceededError'); set(k, v); };
+  assert.equal(saveData(createEmptyData(), s).ok, false);
+  assert.equal(s.getItem(STORAGE_KEY), '{壊れた');
+});

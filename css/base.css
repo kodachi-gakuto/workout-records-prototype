@@ -1,9 +1,11 @@
-/* 土台だけ。画面ごとのデザインはまだ作らない */
+/* 土台。色の変数はここだけで決める（コントラスト比は白 #FFFFFF／入力欄の面 #F7F7F7 の上） */
 :root {
-  --accent: #FC4C02;
-  --text: #222222;
-  --text-sub: #717171;
-  --line: #EBEBEB;
+  --accent: #FC4C02; /* 白の上 3.4。文字には使わない */
+  --text: #222222; /* 15.9／14.9 */
+  --text-sub: #6b6b6b; /* 5.33／4.97 */
+  --hint: #6b6b6b; /* 薄く出す値（前のセット・前回）。5.33／4.97。入れた値とは太さで区別する（薄い値は 400） */
+  --off: #b0b0b0; /* 押せない状態（文字の基準の対象外） */
+  --line: #e6e6e6;
   --field: #F7F7F7;
   --bg: #FFFFFF;
 }
@@ -15,6 +17,7 @@
 }
 
 html {
+  font-size: 106.25%; /* 17px。-apple-system-body が使えないとき */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent; /* タップしたときの灰色の四角を消す */
@@ -32,16 +35,18 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-  font-size: 17px;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
-/* iOS の文字の大きさの設定に合わせる（使えるブラウザーだけ） */
+/* iOS の文字の大きさの設定に合わせる（使えるブラウザーだけ）。
+   html に当てるので、rem がこの大きさについてくる */
 @supports (font: -apple-system-body) {
-  body {
+  html {
     font: -apple-system-body;
+  }
+  body {
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-    line-height: 1.5; /* font の一括指定で戻るため書き直す */
   }
 }
 

@@ -5,18 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>筋トレ記録（試作）</title>
   <link rel="stylesheet" href="css/base.css">
-  <style>
-    main { padding: 24px 16px; }
-    .check { margin-top: 32px; font-size: 13px; color: var(--text-sub); display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
-    .check dd { margin: 0; color: var(--text); }
-  </style>
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <main>
-    <h1>筋トレ記録（試作）</h1>
-    <p>準備中です</p>
-    <dl id="check" class="check" aria-label="確かめ用の表示"></dl>
-  </main>
+  <div id="app"></div>
+  <!-- キーボードの上のバー（入力欄にフォーカスしている間だけ出す） -->
+  <div id="kbar" class="kbar" hidden>
+    <div class="kseg" id="kseg" role="group" aria-label="入力の種類"></div>
+    <div class="right">
+      <button type="button" class="tbtn" id="kbar-timer" aria-label="休憩タイマー">⏱ <span id="kbar-time">2:00</span></button>
+      <button type="button" class="fin" id="kbar-done">完了</button>
+    </div>
+  </div>
+  <div id="toast-top" class="toast top" role="status" hidden></div>
+  <div id="toast-bottom" class="toast bottom" role="status" hidden>
+    <span id="undo-text"></span>
+    <button type="button" id="undo-btn">元に戻す</button>
+  </div>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

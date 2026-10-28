@@ -1,0 +1,518 @@
+/* 画面ごとの見た目。文字の大きさは rem（iOS の文字の設定についてくる）。色の変数は base.css */
+:root {
+  --t-title1: 1.65rem; /* 28px */
+  --t-title3: 1.18rem; /* 20px */
+  --t-head: 1rem; /* 17px */
+  --t-sub: 0.88rem; /* 15px */
+  --t-foot: 0.76rem; /* 13px */
+  --side: 20px;
+  --bar-h: 56px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ---- 仮の一覧（作業③で置きかえる） ---- */
+.list {
+  padding: 16px var(--side) 48px;
+}
+.list h1 {
+  font-size: var(--t-title1);
+  margin: 8px 0 16px;
+}
+.list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.list li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.list li a::after {
+  content: "›";
+  color: var(--text-sub);
+}
+.list .empty {
+  color: var(--text-sub);
+}
+.list .add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.list .add-ex {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-weight: 600;
+}
+.hint-modes {
+  margin-top: 32px;
+  font-size: var(--t-sub);
+}
+.hint-modes p {
+  margin: 0 0 4px;
+}
+.hint-modes a {
+  display: inline-block;
+  min-width: 44px;
+  min-height: 44px;
+  line-height: 44px;
+  text-align: center;
+  color: var(--text);
+}
+.hint-modes p:last-child b {
+  display: inline-block;
+  min-width: 44px;
+  text-align: center;
+}
+.check {
+  margin-top: 24px;
+  font-size: var(--t-foot);
+  color: var(--text-sub);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+}
+.check dd {
+  margin: 0;
+  color: var(--text);
+}
+
+/* ---- 記録の画面 ---- */
+.rec {
+  padding: 0 var(--side) calc(120px + env(safe-area-inset-bottom)); /* タイマーの丸に隠れない余白 */
+}
+body.kb-open .rec {
+  padding-bottom: 60vh; /* キーボードが出ている間、下の行もバーの上まで上げられるように */
+}
+
+.navb {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: calc(-1 * env(safe-area-inset-top)) calc(-1 * var(--side)) 0;
+  padding: env(safe-area-inset-top) calc(var(--side) - 10px) 0;
+  background: var(--bg);
+  font-size: var(--t-head);
+}
+.navb button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  color: #222;
+}
+.navb .back {
+  font-weight: 600;
+}
+.navb .save {
+  font-weight: 700;
+}
+.navb .save.off {
+  color: var(--off);
+  cursor: default;
+}
+
+.ttl-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0 0;
+}
+.ttl {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--t-title1);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.lg .ttl-row {
+  flex-wrap: wrap;
+}
+html.lg .ttl {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.bst {
+  flex: 0 0 auto;
+  font-size: var(--t-sub);
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.bst b {
+  color: #222;
+  font-weight: 700;
+}
+
+.lab {
+  margin: 24px 0 8px;
+  font-size: var(--t-head);
+  font-weight: 700;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+  padding: 4px 18px;
+}
+
+/* 前回 */
+.prev .hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  font-size: var(--t-sub);
+  font-weight: 600;
+  color: #222;
+  text-align: left;
+}
+.prev .hd .chev {
+  font-size: var(--t-foot);
+  font-weight: 400;
+  color: var(--text-sub);
+}
+.prev .first {
+  margin: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: var(--t-sub);
+  color: var(--text-sub);
+}
+/* 1つの grid にして、kg・回の位置を全部の行でそろえる */
+.plist {
+  display: grid;
+  grid-template-columns: 1.6em auto auto 1fr;
+  column-gap: 20px;
+  font-size: var(--t-sub);
+  font-variant-numeric: tabular-nums;
+}
+.plist > span {
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+.plist > span:nth-child(4n + 1) {
+  text-align: left;
+  color: var(--text-sub);
+}
+small.u {
+  font-size: var(--t-foot);
+  font-weight: 400;
+  color: var(--text-sub);
+  margin-left: 4px;
+}
+
+/* 今回 */
+.srow {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+.srow + .srow {
+  border-top: 1px solid var(--line);
+}
+.srow .no {
+  color: var(--text-sub);
+  font-size: var(--t-sub);
+}
+.nosets {
+  margin: 0;
+  padding: 14px 0;
+  color: var(--text-sub);
+}
+
+/* 入力欄：本物の input を欄いっぱいに重ね、フォーカスしていない間は表示の文字を見せる */
+.in {
+  position: relative;
+  min-height: max(48px, calc(var(--t-head) * 2.8)); /* 標準の文字で 48。大きい文字では2行ぶん */
+  border-radius: 10px;
+  background: var(--field);
+  border: 2px solid transparent;
+  min-width: 0;
+}
+.in:focus-within {
+  border-color: #fc4c02; /* 枠 3.4 */
+  background: #fff;
+}
+.in .disp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: center;
+  justify-content: center;
+  padding: 2px 4px;
+  font-size: calc(var(--t-head) + 0.12rem);
+  font-weight: 600;
+  line-height: 1.2;
+  color: #222;
+  text-align: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+.in .disp > span {
+  white-space: nowrap;
+}
+.in .disp.ph {
+  color: var(--hint);
+  font-weight: 400; /* 入れた値（600）と太さで区別する */
+}
+.in .disp.ph small.u {
+  color: var(--hint);
+}
+.in.long .disp {
+  font-size: var(--t-sub);
+}
+.in.long .disp small.u {
+  margin-left: 2px;
+}
+.in .disp .ex {
+  font-size: var(--t-foot);
+  font-weight: 600;
+}
+.in:focus-within .disp {
+  visibility: hidden;
+}
+.in input {
+  /* 欄いっぱいに重ねる（大きい文字で欄が高くなっても、どこを押しても input に当たる） */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 2.2em 0 0.6em;
+  border: 0;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  font-size: max(16px, calc(var(--t-head) + 0.12rem)); /* 16px より小さいと iOS が拡大する */
+  font-weight: 600;
+  color: transparent; /* フォーカスしていない間は表示の文字を見せる */
+  caret-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 8px;
+}
+.in input:focus {
+  color: #222;
+  caret-color: #fc4c02;
+}
+.in input::placeholder {
+  color: transparent;
+}
+.in input:focus::placeholder {
+  color: var(--hint);
+  font-weight: 400;
+}
+.in .unit {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--t-foot);
+  color: var(--text-sub);
+  pointer-events: none;
+  visibility: hidden;
+}
+.in:focus-within .unit {
+  visibility: visible;
+}
+
+.x {
+  min-height: 44px;
+  font-size: 1.2rem;
+  color: var(--text-sub); /* 5.33 */
+}
+
+.addset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: var(--t-head);
+  font-weight: 600;
+  color: #222;
+}
+
+/* タイマー（見た目と置き場所だけ。動きは作業⑤） */
+.tm {
+  position: fixed;
+  right: calc(var(--side) + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 6;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #222;
+}
+body.kb-open .tm {
+  display: none;
+}
+
+/* キーボードの上のバー */
+.kbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--bar-h);
+  padding: 6px calc(10px + env(safe-area-inset-right)) 6px calc(10px + env(safe-area-inset-left));
+  background: #f2f2f4;
+  border-top: 1px solid #c8c8cc;
+  font-size: 14px;
+}
+.kbar.vv {
+  bottom: auto; /* visualViewport で top を決める */
+}
+.kseg {
+  display: flex;
+  background: #e3e3e8;
+  border-radius: 9px;
+  padding: 2px;
+  min-width: 0;
+}
+.kseg button {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: #222;
+  white-space: nowrap;
+}
+.kseg button[aria-pressed="true"] {
+  background: #fff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.kbar .right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.kbar .tbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #c8c8cc;
+  font-weight: 700;
+  color: #222;
+}
+.kbar .fin {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
+}
+
+/* 案内（元に戻す・保存できませんでした） */
+.toast {
+  position: fixed;
+  left: calc(16px + env(safe-area-inset-left));
+  right: calc(16px + env(safe-area-inset-right));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 6px 4px 16px;
+  border-radius: 12px;
+  background: #222;
+  color: #fff; /* 16.1 */
+  font-size: var(--t-sub);
+}
+.toast.bottom {
+  bottom: calc(24px + 64px + 12px + env(safe-area-inset-bottom)); /* タイマーの丸の上 */
+}
+.toast.top {
+  top: calc(52px + env(safe-area-inset-top));
+  justify-content: center;
+  padding: 4px 16px;
+}
+.toast button {
+  min-height: 44px;
+  padding: 0 10px;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.missing {
+  padding: 24px var(--side);
+}
+/* part の間（「補助 20kg」「8回 補助2」） */
+.disp .gap,
+.plist .gap {
+  margin-left: 0.3em;
+}
+.in .disp.ph .ex {
+  font-weight: 400;
+}
