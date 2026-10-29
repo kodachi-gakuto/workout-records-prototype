@@ -497,7 +497,7 @@ body.kb-open .tm {
 .missing {
   padding: 24px var(--side);
 }
-/* part の間（「補助 20kg」「8回 +補助2」） */
+/* part の間（「補助 20kg」）。「8回（補助2）」は詰める */
 .disp .gap,
 .plist .gap {
   margin-left: 0.3em;

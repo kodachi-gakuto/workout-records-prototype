@@ -4,7 +4,7 @@
 import {
   findExercise, findTodayWorkout, ensureTodayWorkout, updateSet, addSet, insertSet, removeSet,
   removeEmptySets, previousWorkout, bestWeight, cleanSets, emptySet, isEmptySet,
-  sanitizeInput, parseNumber, numText, weightParts, repsParts, editParts, shortDate, mmss,
+  sanitizeInput, parseNumber, numText, weightParts, repsParts, editParts, canAddAssist, shortDate, mmss,
 } from './records.js';
 import { todayString } from './store.js';
 import { esc, partsHtml } from './ui.js';
@@ -143,7 +143,7 @@ export function mountRecord(root, ctx, exerciseId) {
   }
 
   // 欄に出す文字：{ parts, ph（空の欄の「重さ」「回数」）, long（小さめの文字） }
-  // フォーカス中は、打っている文字を「自重+10kg」「10回 +補助1」の形でその場に出す
+  // フォーカス中は、打っている文字を「自重+10kg」「10回（補助1）」の形でその場に出す
   function cellView(s, field, text) {
     const long = field === 'w' ? s.kind !== 'kg' : s.assistedReps !== null;
     if (text !== null) return { parts: editParts(s, field, text), ph: false, long };
@@ -216,7 +216,13 @@ export function mountRecord(root, ctx, exerciseId) {
     kseg.innerHTML = `
       <button type="button" data-step="-1" aria-label="補助を1回減らす" aria-disabled="${n === 0}">−</button>
       <span class="n" aria-live="polite">補助 ${n}</span>
-      <button type="button" data-step="1" aria-label="補助を1回増やす">＋</button>`;
+      <button type="button" data-step="1" aria-label="補助を1回増やす" aria-disabled="${!canAddAssist(s)}">＋</button>`;
+  }
+
+  // 回数を打ちかえたら、「＋」を押せるか（補助は reps まで）だけを直す
+  function updateStepPlus() {
+    const plus = kseg.querySelector('button[data-step="1"]');
+    if (plus) plus.setAttribute('aria-disabled', String(!canAddAssist(sets()[focus.index])));
   }
 
   function placeBar() {
@@ -309,6 +315,8 @@ export function mountRecord(root, ctx, exerciseId) {
     if (text !== input.value) input.value = text;
     const n = parseNumber(text);
     write(focus.index, { [focus.field === 'w' ? 'weight' : 'reps']: n });
+    // reps を減らして補助より小さくなっても、補助はそのまま（直さない）
+    if (focus.field === 'r') updateStepPlus();
     updateCells();
     renderBest();
   }
@@ -338,6 +346,7 @@ export function mountRecord(root, ctx, exerciseId) {
     if (!focus || focus.field !== 'r') return;
     const s = sets()[focus.index];
     if (!s) return;
+    if (delta > 0 && !canAddAssist(s)) return;
     const n = Math.max(0, (s.assistedReps ?? 0) + delta);
     write(focus.index, { assistedReps: n === 0 ? null : n });
     renderSeg();
@@ -356,7 +365,7 @@ export function mountRecord(root, ctx, exerciseId) {
     // フォーカスが外れていたら戻す（クリックの中なので iOS でもキーボードが出る見込み、未確認）
     if (focus && document.activeElement !== focus.input) focus.input.focus();
     if (btn.dataset.mode) onMode(btn.dataset.mode);
-    // 押せない「−」は disabled にしない（disabled の上では pointerdown を止められず、フォーカスが外れるおそれがあるため）
+    // 押せない「−」「＋」は disabled にしない（disabled の上では pointerdown を止められず、フォーカスが外れるおそれがあるため）
     if (btn.dataset.step && btn.getAttribute('aria-disabled') !== 'true') onStep(Number(btn.dataset.step));
     // ⏱ は作業⑤まで何もしない
   }

@@ -4,7 +4,7 @@ import { createEmptyData } from '../js/store.js';
 import {
   addExercise, findExercise, listExercises, findTodayWorkout, ensureTodayWorkout,
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
-  emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText,
+  emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
   shortDate, mmss,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
@@ -173,8 +173,8 @@ test('表示の文字', () => {
   assert.equal(partsText(weightParts(set(10, 10, 'bodyweight'))), '自重+10kg');
   assert.equal(partsText(weightParts(set(20, 10, 'assist'))), '補助 20kg');
   assert.equal(partsText(repsParts(set(60, 10))), '10回');
-  assert.equal(partsText(repsParts(set(60, 10, 'kg', 1))), '10回 +補助1');
-  assert.equal(partsText(repsParts(set(60, null, 'kg', 2))), '+補助2');
+  assert.equal(partsText(repsParts(set(60, 10, 'kg', 1))), '10回（補助1）');
+  assert.equal(partsText(repsParts(set(60, null, 'kg', 2))), '（補助2）');
   assert.equal(repsParts(set(60, null)), null);
   assert.equal(shortDate('2026-10-19'), '10/19');
   assert.equal(shortDate('x'), '');
@@ -183,14 +183,14 @@ test('表示の文字', () => {
   assert.equal(mmss(undefined), '2:00');
 });
 
-test('打っている間の欄の文字：打った文字に「自重」「kg」「回」「+補助N」を添える', () => {
+test('打っている間の欄の文字：打った文字に「自重」「kg」「回」「（補助N）」を添える', () => {
   assert.equal(partsText(editParts(set(null, null, 'bodyweight'), 'w', '')), '自重');
   assert.equal(partsText(editParts(set(10, null, 'bodyweight'), 'w', '10')), '自重+10kg');
   assert.equal(partsText(editParts(set(null, null, 'bodyweight'), 'w', '2.')), '自重+2.kg');
   assert.equal(partsText(editParts(set(60, null), 'w', '60')), '60kg');
   assert.equal(partsText(editParts(set(null, null), 'w', '')), 'kg');
   assert.equal(partsText(editParts(set(20, null, 'assist'), 'w', '20')), '補助 20kg');
-  assert.equal(partsText(editParts(set(60, 10, 'kg', 1), 'r', '10')), '10回 +補助1');
+  assert.equal(partsText(editParts(set(60, 10, 'kg', 1), 'r', '10')), '10回（補助1）');
   assert.equal(partsText(editParts(set(60, null), 'r', '')), '回');
   assert.equal(editParts({ kind: 'x' }, 'w', '1'), null);
 });
@@ -199,5 +199,16 @@ test('打つ位置の印は、打っている数字のうしろ（単位の前�
   assert.equal(partsHtml(editParts(set(10, null, 'bodyweight'), 'w', '10')),
     '<span>自重</span><span>+10<i class="caret"></i><small class="u">kg</small></span>');
   assert.equal(partsHtml(repsParts(set(60, 10, 'kg', 1))),
-    '<span>10<small class="u">回</small></span><span class="ex gap">+補助1</span>');
+    '<span>10<small class="u">回</small></span><span class="ex">（補助1）</span>');
+});
+
+test('手伝ってもらった回数を増やせるのは reps まで。reps が空なら増やせる', () => {
+  assert.equal(canAddAssist(set(60, 10)), true);
+  assert.equal(canAddAssist(set(60, 10, 'kg', 9)), true);
+  assert.equal(canAddAssist(set(60, 10, 'kg', 10)), false);
+  assert.equal(canAddAssist(set(60, 1, 'kg', 3)), false); // reps を減らして補助より小さくなった
+  assert.equal(canAddAssist(set(60, 0)), false);
+  assert.equal(canAddAssist(set(60, null)), true);
+  assert.equal(canAddAssist(set(60, null, 'kg', 5)), true);
+  assert.equal(canAddAssist(undefined), false);
 });

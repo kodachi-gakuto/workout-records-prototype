@@ -212,8 +212,14 @@ export function repsParts(s) {
   return parts.length ? parts : null;
 }
 
-// 手伝ってもらった回数（reps に足す数）
-const assistedPart = (n) => ({ text: '+補助' + n, extra: true });
+// 手伝ってもらった回数（reps のうちの数。10回 補助1 ＝ 10回のうち最後の1回は手伝ってもらった）
+const assistedPart = (n) => ({ text: '（補助' + n + '）', extra: true, tight: true });
+
+// 手伝ってもらった回数を1つ増やせるか。reps に数があれば reps まで。reps が空なら増やせる
+export function canAddAssist(s) {
+  if (!isValidSet(s)) return false;
+  return !isNum(s.reps) || (s.assistedReps ?? 0) < s.reps;
+}
 
 // 打っている間の欄の文字。text は input に打っている文字（"10." のような途中の形もそのまま出す）
 // field：'w'（重さ）／'r'（回数）
