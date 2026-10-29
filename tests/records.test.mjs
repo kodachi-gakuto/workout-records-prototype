@@ -5,7 +5,8 @@ import {
   addExercise, findExercise, listExercises, findTodayWorkout, ensureTodayWorkout,
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
-  shortDate, mmss,
+  shortDate, mmss, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
+  todaySetCount, exercisesByPart,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
 
@@ -211,4 +212,132 @@ test('手伝ってもらった回数を増やせるのは reps まで。reps が
   assert.equal(canAddAssist(set(60, null)), true);
   assert.equal(canAddAssist(set(60, null, 'kg', 5)), true);
   assert.equal(canAddAssist(undefined), false);
+});
+
+// ---- 種目の登録・編集・削除 ----
+
+const ex = (id, name, part, createdAt) => ({ id, name, part, restSec: 120, createdAt });
+
+test('名前を整える：前後の空白を取り、25文字で切る', () => {
+  assert.equal(NAME_MAX, 25);
+  assert.equal(tidyName('  ベンチプレス　'), 'ベンチプレス');
+  assert.equal(tidyName('   '), '');
+  assert.equal(tidyName('あ'.repeat(30)), 'あ'.repeat(25));
+  assert.equal(tidyName('  ' + 'a'.repeat(24) + ' b'), 'a'.repeat(24)); // 切ったあとの空白も取る
+  assert.equal(cutName('a'.repeat(30)), 'a'.repeat(25));
+  assert.equal(cutName(' a '), ' a ');
+  assert.equal(tidyName(undefined), '');
+});
+
+test('名前を切る：絵文字は1文字と数え、途中でこわさない', () => {
+  assert.equal(cutName('💪'.repeat(30)), '💪'.repeat(25));
+  assert.equal(cutName('a'.repeat(24) + '💪💪'), 'a'.repeat(24) + '💪');
+  assert.equal(tidyName('💪'.repeat(26)), '💪'.repeat(25));
+});
+
+test('同じ名前の判定：空白を取ったあとで完全に同じ。編集のときは自分を除く', () => {
+  const data = { ...createEmptyData(), exercises: [ex('a', 'ベンチプレス', 'chest'), ex('b', '懸垂', 'back')] };
+  assert.equal(hasSameName(data, ' ベンチプレス '), true);
+  assert.equal(hasSameName(data, 'ベンチプレス2'), false);
+  assert.equal(hasSameName(data, 'べんちぷれす'), false);
+  assert.equal(hasSameName(data, 'ベンチプレス', 'a'), false);
+  assert.equal(hasSameName(data, '懸垂', 'a'), true);
+});
+
+test('種目の名前と部位を書きかえる（ほかの項目と元の data は変えない）', () => {
+  const before = { ...createEmptyData(), exercises: [ex('a', 'ベンチ', 'chest', 't1'), null, ex('b', '懸垂', 'back', 't2')] };
+  const d = updateExercise(before, 'a', { name: 'ベンチプレス', part: 'arms' });
+  assert.deepEqual(d.exercises[0], { ...ex('a', 'ベンチプレス', 'arms', 't1') });
+  assert.equal(d.exercises[1], null);
+  assert.equal(d.exercises[2], before.exercises[2]);
+  assert.equal(before.exercises[0].name, 'ベンチ');
+});
+
+test('種目を消すと、その種目の記録も消え、タイマーが指していれば null にする', () => {
+  const before = {
+    ...createEmptyData(),
+    exercises: [ex('e1', 'ベンチ', 'chest'), ex('e2', '懸垂', 'back')],
+    workouts: [workout('a', '2026-10-01', [set(60, 10)]), workout('b', TODAY, [], 'e2'), workout('c', TODAY, [set(1, 1)]),
+      { id: 'bad', exerciseId: 'e1' }],
+    timer: { exerciseId: 'e1', endsAt: 1 },
+  };
+  const d = deleteExercise(before, 'e1');
+  assert.deepEqual(d.exercises.map((e) => e.id), ['e2']);
+  assert.deepEqual(d.workouts.map((w) => w.id), ['b']);
+  assert.equal(d.timer, null);
+  assert.equal(before.exercises.length, 2);
+  // ほかの種目を指すタイマーはそのまま
+  const timer = { exerciseId: 'e2', endsAt: 1 };
+  assert.equal(deleteExercise({ ...before, timer }, 'e1').timer, timer);
+  assert.equal(deleteExercise({ ...before, timer: null }, 'e1').timer, null);
+});
+
+test('今日のセットの数：今日の記録の空でないセットだけ', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [workout('t', TODAY, [set(60, 10), emptySet(), null, set(null, 8)]), workout('y', '2026-10-27', [set(1, 1)], 'e2')],
+  };
+  assert.equal(todaySetCount(d, 'e1', TODAY), 2);
+  assert.equal(todaySetCount(d, 'e2', TODAY), 0);
+  assert.equal(todaySetCount(createEmptyData(), 'e1', TODAY), 0);
+});
+
+const ids = (groups, part) => groups.find((g) => g.id === part).exercises.map((e) => e.id);
+
+test('部位ごとの並び：前回の日の種目をその日の startedAt の順、やっていない種目は下に登録順', () => {
+  const d = {
+    ...createEmptyData(),
+    exercises: [
+      ex('a', 'A', 'chest', '2026-10-01T00:00:00.000Z'),
+      ex('b', 'B', 'chest', '2026-10-02T00:00:00.000Z'),
+      ex('c', 'C', 'chest', '2026-10-03T00:00:00.000Z'),
+      ex('d', 'D', 'chest', '2026-10-04T00:00:00.000Z'),
+      ex('z', 'Z', 'legs', '2026-10-05T00:00:00.000Z'),
+    ],
+    workouts: [
+      workout('1', '2026-10-20', [set(1, 1)], 'a', '2026-10-20T09:00:00.000Z'), // 前の日（数えない）
+      workout('2', '2026-10-25', [set(1, 1)], 'c', '2026-10-25T09:00:00.000Z'),
+      workout('3', '2026-10-25', [set(1, 1)], 'b', '2026-10-25T10:00:00.000Z'),
+      workout('4', '2026-10-24', [set(1, 1)], 'z'), // ほかの部位
+    ],
+  };
+  const g = exercisesByPart(d, TODAY);
+  assert.deepEqual(g.map((x) => x.id), ['chest', 'back', 'shoulders', 'arms', 'abs', 'legs']);
+  assert.equal(g[0].label, '胸');
+  assert.deepEqual(ids(g, 'chest'), ['c', 'b', 'a', 'd']);
+  assert.deepEqual(ids(g, 'legs'), ['z']);
+  assert.deepEqual(ids(g, 'back'), []);
+});
+
+test('部位ごとの並び：記録がなければ登録順。今日の記録と空のセットだけの記録は数えない', () => {
+  const exercises = [
+    ex('b', 'B', 'back', '2026-10-02T00:00:00.000Z'),
+    ex('a', 'A', 'back', '2026-10-01T00:00:00.000Z'),
+    ex('c', 'C', 'back', '2026-10-03T00:00:00.000Z'),
+  ];
+  assert.deepEqual(ids(exercisesByPart({ ...createEmptyData(), exercises }, TODAY), 'back'), ['a', 'b', 'c']);
+  const d = {
+    ...createEmptyData(),
+    exercises,
+    workouts: [
+      workout('1', '2026-10-25', [set(1, 1)], 'c'),
+      workout('2', TODAY, [set(1, 1)], 'b'), // 今日
+      workout('3', '2026-10-26', [emptySet(), null], 'a'), // 空のセットだけ
+      workout('4', '2026-10-27', [], 'a'), // セットなし
+    ],
+  };
+  assert.deepEqual(ids(exercisesByPart(d, TODAY), 'back'), ['c', 'a', 'b']);
+});
+
+test('部位が PARTS にない種目は、最後に「部位なし」で出す（ないときは出さない）', () => {
+  const d = {
+    ...createEmptyData(),
+    exercises: [ex('a', 'A', null, 't1'), ex('b', 'B', 'chest', 't2'), ex('c', 'C', 'neck', 't3'), { id: 1 }],
+  };
+  const g = exercisesByPart(d, TODAY);
+  assert.equal(g.length, 7);
+  assert.deepEqual(g[6], { id: null, label: '部位なし', exercises: [d.exercises[0], d.exercises[2]] });
+  assert.deepEqual(ids(g, 'chest'), ['b']);
+  assert.equal(exercisesByPart(createEmptyData(), TODAY).length, 6);
+  assert.doesNotThrow(() => exercisesByPart({ exercises: null, workouts: [null, 'x'] }, TODAY));
 });

@@ -15,7 +15,7 @@ const UNDO_MS = 3000;
 export function mountRecord(root, ctx, exerciseId) {
   const exercise = findExercise(ctx.getData(), exerciseId);
   if (!exercise) {
-    root.innerHTML = `<main class="missing"><p>種目が見つかりません</p><p><a href="#/">種目に戻る</a></p></main>`;
+    root.innerHTML = `<main class="missing"><p>種目が見つかりません</p><p><a href="#/select">種目に戻る</a></p></main>`;
     return { unmount() {}, flush() {} };
   }
 
@@ -399,7 +399,7 @@ export function mountRecord(root, ctx, exerciseId) {
   }
   function onSave() {
     if (kbOpen()) return;
-    ctx.go('#/');
+    ctx.replace('#/select');
   }
 
   // ---- つなぐ ----
@@ -412,7 +412,7 @@ export function mountRecord(root, ctx, exerciseId) {
     if (del) deleteRow(Number(del.dataset.del));
   });
   $('rec-add').addEventListener('click', addRow);
-  $('rec-back').addEventListener('click', () => ctx.go('#/'));
+  $('rec-back').addEventListener('click', () => ctx.replace('#/select'));
   const save = $('rec-save');
   save.addEventListener('pointerdown', onSaveDown);
   save.addEventListener('mousedown', onSaveDown);

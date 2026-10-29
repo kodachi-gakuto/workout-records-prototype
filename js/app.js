@@ -1,12 +1,13 @@
 // 起動と画面の行き来（hash）
-// #/ ＝仮の一覧（作業③で「種目を選ぶ」に置きかえる）／#/record/<exerciseId> ＝記録の画面
+// #/ ＝仮の一覧（作業④でホームに置きかえる）／#/select ＝種目を選ぶ／#/record/<exerciseId> ＝記録の画面
 import { loadData, saveData, requestPersist, todayString, CURRENT_VERSION } from './store.js';
 import { addExercise, listExercises, ensureTodayWorkout } from './records.js';
 import { mountRecord } from './record-screen.js';
+import { mountSelect } from './select-screen.js';
 import { esc, showTopToast } from './ui.js';
 
 const app = document.getElementById('app');
-const state = { data: null, recoveredKey: null, persisted: undefined, screen: null };
+const state = { data: null, recoveredKey: null, persisted: undefined, screen: null, page: null };
 
 // data を差しかえて保存する。保存できなかったら上に短く出す
 function commit(data) {
@@ -22,9 +23,11 @@ const ctx = {
   // 画面を閉じるときに、画面の状態は変えずに保存だけする
   saveOnly: (data) => saveData(data),
   go: (hash) => { location.hash = hash; },
+  // 履歴を積まずに移る（戻るで同じ画面に戻らないように）
+  replace: (hash) => { location.replace(hash); },
 };
 
-// ---- 仮の一覧 ----
+// ---- 仮の一覧（ホームの代わり） ----
 const SAMPLES = [
   ['ベンチプレス', 'chest'],
   ['懸垂', 'back'],
@@ -65,10 +68,8 @@ function renderList() {
     : state.persisted === null ? '使えない' : state.persisted ? '許可された' : '許可されなかった';
   app.innerHTML = `
     <main class="list">
-      <h1>種目（仮）</h1>
-      ${exercises.length
-        ? `<ul>${exercises.map((e) => `<li><a href="#/record/${encodeURIComponent(e.id)}">${esc(e.name)}</a></li>`).join('')}</ul>`
-        : '<p class="empty">種目がありません</p>'}
+      <h1>ホーム（仮）</h1>
+      <a class="cta" href="#/select">本日のトレーニングを追加</a>
       <div class="add-row">
         <button type="button" class="add-ex" id="add-ex">仮の種目を足す</button>
         <button type="button" class="add-ex" id="add-ex-prev">前回の記録つきの仮の種目を足す</button>
@@ -96,8 +97,13 @@ function route() {
   state.screen?.unmount();
   state.screen = null;
   window.scrollTo(0, 0);
+  const from = state.page;
   const m = location.hash.match(/^#\/record\/(.+)$/);
-  if (m) {
+  state.page = m ? 'record' : location.hash === '#/select' ? 'select' : 'list';
+  if (state.page === 'select') {
+    // 記録の画面から戻ったときは、記録の画面を開く前のスクロールの位置
+    state.screen = mountSelect(app, ctx, { restore: from === 'record' });
+  } else if (m) {
     let id = null;
     try {
       id = decodeURIComponent(m[1]);

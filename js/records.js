@@ -4,7 +4,7 @@
 // 書くときは、形のおかしいものも消さずにそのまま残す（あとで直せるように）。
 // セットの index は「形の正しいセットだけを数えた番号」（画面の行の番号と同じ）。
 
-import { DEFAULT_REST_SEC, newId, todayString } from './store.js';
+import { DEFAULT_REST_SEC, PARTS, newId, todayString } from './store.js';
 
 export const KINDS = ['kg', 'bodyweight', 'assist'];
 
@@ -68,6 +68,83 @@ export function findExercise(data, exerciseId) {
 export function addExercise(data, { name, part = null, restSec = DEFAULT_REST_SEC, id = newId(), now = new Date() }) {
   const exercise = { id, name, part, restSec, createdAt: now.toISOString() };
   return { data: { ...data, exercises: [...exercisesOf(data), exercise] }, exercise };
+}
+
+// ---- 種目の登録・編集・削除 ----
+
+export const NAME_MAX = 25;
+
+export const isPart = (id) => PARTS.some((p) => p.id === id);
+
+// 打っている名前を25文字で切る（前後の空白はまだ取らない）。絵文字をこわさないよう、文字ごとに数える
+export const cutName = (text) => Array.from(String(text ?? '')).slice(0, NAME_MAX).join('');
+
+// 保存する名前：前後の空白を取り、25文字で切る
+export const tidyName = (text) => cutName(String(text ?? '').trim()).trim();
+
+// 整えたあとで同じ名前の種目があるか（exceptId の種目は除く）
+export function hasSameName(data, name, exceptId = null) {
+  const n = tidyName(name);
+  return listExercises(data).some((e) => e.id !== exceptId && e.name === n);
+}
+
+// 名前と部位を書きかえる（ほかの項目はそのまま）
+export function updateExercise(data, exerciseId, { name, part }) {
+  return {
+    ...data,
+    exercises: exercisesOf(data).map((e) => (isValidExercise(e) && e.id === exerciseId ? { ...e, name, part } : e)),
+  };
+}
+
+// 種目と、その種目の記録をすべて消す。タイマーがその種目を指していたら null にする
+export function deleteExercise(data, exerciseId) {
+  const next = {
+    ...data,
+    exercises: exercisesOf(data).filter((e) => !(isValidExercise(e) && e.id === exerciseId)),
+    workouts: workoutsOf(data).filter((w) => !(isPlainObject(w) && w.exerciseId === exerciseId)),
+  };
+  if (isPlainObject(data?.timer) && data.timer.exerciseId === exerciseId) next.timer = null;
+  return next;
+}
+
+// 今日の記録の、空でないセットの数
+export function todaySetCount(data, exerciseId, today = todayString()) {
+  const w = findTodayWorkout(data, exerciseId, today);
+  return w ? cleanSets(w.sets).filter((s) => !isEmptySet(s)).length : 0;
+}
+
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+// 部位ごとの種目：[{ id, label, exercises }]。PARTS の順で、部位が PARTS にない種目は最後に「部位なし」（id は null）
+// 並び（前回やった順）：今日より前で、その部位の種目を最後に記録した日の種目を、その日の startedAt の順に上から。
+// その日にやっていない種目は、その下に登録した順（createdAt の順）。今日の記録と、空のセットしかない記録は数えない
+export function exercisesByPart(data, today = todayString()) {
+  // 種目ごとに、日付 → その日のいちばん早い startedAt
+  const done = new Map();
+  for (const w of workoutsOf(data)) {
+    if (!isValidWorkout(w) || !(w.date < today)) continue;
+    if (cleanSets(w.sets).every(isEmptySet)) continue;
+    const days = done.get(w.exerciseId) ?? new Map();
+    const at = String(w.startedAt ?? '');
+    if (!days.has(w.date) || at < days.get(w.date)) days.set(w.date, at);
+    done.set(w.exerciseId, days);
+  }
+  const order = (list) => {
+    const byCreated = [...list].sort((a, b) => byText(String(a.createdAt ?? ''), String(b.createdAt ?? '')));
+    let last = null;
+    for (const e of list) {
+      for (const date of done.get(e.id)?.keys() ?? []) if (last === null || date > last) last = date;
+    }
+    if (last === null) return byCreated;
+    const startedAt = (e) => done.get(e.id)?.get(last);
+    const did = byCreated.filter((e) => startedAt(e) !== undefined).sort((a, b) => byText(startedAt(a), startedAt(b)));
+    return [...did, ...byCreated.filter((e) => startedAt(e) === undefined)];
+  };
+  const all = listExercises(data);
+  const groups = PARTS.map((p) => ({ id: p.id, label: p.label, exercises: order(all.filter((e) => e.part === p.id)) }));
+  const other = all.filter((e) => !isPart(e.part));
+  if (other.length) groups.push({ id: null, label: '部位なし', exercises: order(other) });
+  return groups;
 }
 
 export function findTodayWorkout(data, exerciseId, today = todayString()) {
