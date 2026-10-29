@@ -4,11 +4,11 @@ export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// [{ text, unit?, extra?, tight? }] を、数字と小さい単位の HTML にする
+// [{ text, unit?, extra?, tight?, caret? }] を、数字と小さい単位の HTML にする
 export function partsHtml(parts) {
   return (parts ?? []).map((p, i) => {
     const cls = [p.extra ? 'ex' : '', i > 0 && !p.tight ? 'gap' : ''].filter(Boolean).join(' ');
-    return `<span${cls ? ` class="${cls}"` : ''}>${esc(p.text)}${p.unit ? `<small class="u">${esc(p.unit)}</small>` : ''}</span>`;
+    return `<span${cls ? ` class="${cls}"` : ''}>${esc(p.text)}${p.caret ? '<i class="caret"></i>' : ''}${p.unit ? `<small class="u">${esc(p.unit)}</small>` : ''}</span>`;
   }).join('');
 }
 

@@ -68,26 +68,6 @@ button {
   border-radius: 14px;
   font-weight: 600;
 }
-.hint-modes {
-  margin-top: 32px;
-  font-size: var(--t-sub);
-}
-.hint-modes p {
-  margin: 0 0 4px;
-}
-.hint-modes a {
-  display: inline-block;
-  min-width: 44px;
-  min-height: 44px;
-  line-height: 44px;
-  text-align: center;
-  color: var(--text);
-}
-.hint-modes p:last-child b {
-  display: inline-block;
-  min-width: 44px;
-  text-align: center;
-}
 .check {
   margin-top: 24px;
   font-size: var(--t-foot);
@@ -299,9 +279,6 @@ small.u {
   color: var(--hint);
   font-weight: 400; /* 入れた値（600）と太さで区別する */
 }
-.in .disp.ph small.u {
-  color: var(--hint);
-}
 .in.long .disp {
   font-size: var(--t-sub);
 }
@@ -312,8 +289,17 @@ small.u {
   font-size: var(--t-foot);
   font-weight: 600;
 }
-.in:focus-within .disp {
-  visibility: hidden;
+.in .disp .caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin: 0 1px;
+  vertical-align: -0.15em;
+  background: #fc4c02;
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% { opacity: 0; }
 }
 .in input {
   /* 欄いっぱいに重ねる（大きい文字で欄が高くなっても、どこを押しても input に当たる） */
@@ -329,35 +315,15 @@ small.u {
   text-align: center;
   font-size: max(16px, calc(var(--t-head) + 0.12rem)); /* 16px より小さいと iOS が拡大する */
   font-weight: 600;
-  color: transparent; /* フォーカスしていない間は表示の文字を見せる */
+  /* 文字は見せず、表示の文字（.disp）を見せる。フォーカス中も「自重+10kg」の形で .disp に出す */
+  color: transparent;
   caret-color: transparent;
   -webkit-appearance: none;
   appearance: none;
   border-radius: 8px;
 }
-.in input:focus {
-  color: #222;
-  caret-color: #fc4c02;
-}
-.in input::placeholder {
-  color: transparent;
-}
-.in input:focus::placeholder {
-  color: var(--hint);
-  font-weight: 400;
-}
-.in .unit {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: var(--t-foot);
-  color: var(--text-sub);
-  pointer-events: none;
-  visibility: hidden;
-}
-.in:focus-within .unit {
-  visibility: visible;
+.in input::selection {
+  background: transparent;
 }
 
 .x {
@@ -444,6 +410,29 @@ body.kb-open .tm {
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
+/* 手伝ってもらった回数のステッパー（− 補助 N ＋） */
+.kstep {
+  align-items: center;
+}
+.kstep button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.kstep button[aria-disabled="true"] {
+  background: transparent;
+  box-shadow: none;
+  color: #8e8e93;
+}
+.kstep .n {
+  padding: 0 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .kbar .right {
   display: flex;
   align-items: center;
@@ -508,11 +497,8 @@ body.kb-open .tm {
 .missing {
   padding: 24px var(--side);
 }
-/* part の間（「補助 20kg」「8回 補助2」） */
+/* part の間（「補助 20kg」「8回 +補助2」） */
 .disp .gap,
 .plist .gap {
   margin-left: 0.3em;
-}
-.in .disp.ph .ex {
-  font-weight: 400;
 }

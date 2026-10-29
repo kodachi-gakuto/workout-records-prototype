@@ -4,13 +4,12 @@
 import {
   findExercise, findTodayWorkout, ensureTodayWorkout, updateSet, addSet, insertSet, removeSet,
   removeEmptySets, previousWorkout, bestWeight, cleanSets, emptySet, isEmptySet,
-  sanitizeInput, parseNumber, numText, weightParts, repsParts, shortDate, mmss,
+  sanitizeInput, parseNumber, numText, weightParts, repsParts, editParts, shortDate, mmss,
 } from './records.js';
 import { todayString } from './store.js';
 import { esc, partsHtml } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
-const REPS_MODES = [['reps', '回数'], ['assistedReps', 'うち補助']]; // 回数の欄で編集する項目
 const UNDO_MS = 3000;
 
 export function mountRecord(root, ctx, exerciseId) {
@@ -34,13 +33,7 @@ export function mountRecord(root, ctx, exerciseId) {
     if (!findTodayWorkout(ctx.getData(), exerciseId, today)) pending = [emptySet(prev?.sets[0]?.kind)];
   }
 
-  // 薄い値の扱い（ユーザーに選んでもらうための3案。仮）
-  //   a：同じ行の片方を入れたら、もう片方の薄い値をそのまま記録する
-  //   b：薄い値の欄をタップしたら、その値を入れて（記録して）全部を選んだ状態にする
-  //   c：薄い値はヒントだけで、記録しない
-  const hintMode = ctx.hintMode ?? 'c';
-
-  // focus：{ input, index, field: 'w' | 'r', repsMode: 'reps' | 'assistedReps' }
+  // focus：{ input, index, field: 'w' | 'r' }
   let focus = null;
   let undo = null; // { set, index, timer }
   let prevOpen = true; // 開くたびに、いつも開いた状態から
@@ -149,50 +142,17 @@ export function mountRecord(root, ctx, exerciseId) {
     $('rec-fold').addEventListener('click', () => { prevOpen = !prevOpen; renderPrev(); });
   }
 
-  // 薄く出すもとのセット：ひとつ上のセット（そこも空なら、さらに上）。1行めは前回の1セットめ
-  // has(s)：そのセットに、薄く出す値があるか
-  function hintSource(list, i, has) {
-    for (let j = i - 1; j >= 0; j -= 1) {
-      if (has(list[j])) return list[j];
-    }
-    const first = prev?.sets[0] ?? null;
-    return first && has(first) ? first : null;
-  }
-  const hasWeight = (kind) => (s) => s.kind === kind && s.weight !== null;
-  const hasReps = (s) => s.reps !== null || s.assistedReps !== null;
-
-  // 欄に出す文字：{ parts, ph（薄く）, long（小さめの文字） }
-  function weightView(list, i) {
-    const s = list[i];
-    const src = hintSource(list, i, hasWeight(s.kind));
-    if (s.weight === null && src) {
-      return { parts: weightParts(src), ph: true, long: s.kind !== 'kg' };
-    }
-    const parts = weightParts(s);
-    return parts ? { parts, ph: false, long: s.kind !== 'kg' } : { parts: [{ text: '重さ' }], ph: true, long: false };
+  // 欄に出す文字：{ parts, ph（空の欄の「重さ」「回数」）, long（小さめの文字） }
+  // フォーカス中は、打っている文字を「自重+10kg」「10回 +補助1」の形でその場に出す
+  function cellView(s, field, text) {
+    const long = field === 'w' ? s.kind !== 'kg' : s.assistedReps !== null;
+    if (text !== null) return { parts: editParts(s, field, text), ph: false, long };
+    const parts = field === 'w' ? weightParts(s) : repsParts(s);
+    return parts ? { parts, ph: false, long } : { parts: [{ text: field === 'w' ? '重さ' : '回数' }], ph: true, long: false };
   }
 
-  function repsView(list, i) {
-    const s = list[i];
-    if (s.reps === null && s.assistedReps === null) {
-      const src = hintSource(list, i, hasReps);
-      const parts = src ? repsParts(src) : null;
-      return parts ? { parts, ph: true, long: src.assistedReps !== null } : { parts: [{ text: '回数' }], ph: true, long: false };
-    }
-    return { parts: repsParts(s), ph: false, long: s.assistedReps !== null };
-  }
-
-  // フォーカス中に input に入れる数字と、空のときに薄く出す数字
-  function editTarget(list, i, field, repsMode) {
-    const s = list[i];
-    if (field === 'w') {
-      const src = hintSource(list, i, hasWeight(s.kind));
-      return { value: numText(s.weight), hint: src ? numText(src.weight) : '', unit: 'kg' };
-    }
-    const key = repsMode;
-    const src = hintSource(list, i, (x) => x[key] !== null);
-    return { value: numText(s[key]), hint: src ? numText(src[key]) : '', unit: '回' };
-  }
+  // 欄の input に入れる数字（回数の欄は reps。手伝ってもらった回数はバーで増やす）
+  const editValue = (s, field) => numText(field === 'w' ? s.weight : s.reps);
 
   function cellHtml(field, i) {
     const decimal = field === 'w';
@@ -201,7 +161,6 @@ export function mountRecord(root, ctx, exerciseId) {
       <input type="text" inputmode="${decimal ? 'decimal' : 'numeric'}" ${decimal ? '' : 'pattern="[0-9]*"'}
         name="${field}${i + 1}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
         enterkeyhint="done" data-i="${i}" data-field="${field}" aria-label="${i + 1}セット目の${decimal ? '重さ' : '回数'}">
-      <span class="unit" aria-hidden="true"></span>
     </div>`;
   }
 
@@ -226,30 +185,38 @@ export function mountRecord(root, ctx, exerciseId) {
       if (!list[i]) continue;
       for (const cell of row.querySelectorAll('.in')) {
         const field = cell.dataset.field;
-        const v = field === 'w' ? weightView(list, i) : repsView(list, i);
+        const input = cell.querySelector('input');
+        const isFocused = focus && focus.input === input;
+        const v = cellView(list[i], field, isFocused ? input.value : null);
         const disp = cell.querySelector('.disp');
         disp.innerHTML = partsHtml(v.parts);
         disp.classList.toggle('ph', v.ph);
         cell.classList.toggle('long', v.long);
-        const input = cell.querySelector('input');
-        const isFocused = focus && focus.input === input;
-        const t = editTarget(list, i, field, isFocused ? focus.repsMode : 'reps');
-        input.placeholder = t.hint;
-        cell.querySelector('.unit').textContent = t.unit;
         // 読み上げ用に、今の値を入れておく（フォーカス中は打っている文字のまま）
-        if (!isFocused) input.value = v.ph ? '' : t.value;
+        if (!isFocused) input.value = editValue(list[i], field);
       }
     }
   }
 
   // ---- キーボードの上のバー ----
+  // 重さの欄：kg／自重／補助の切り替え。回数の欄：手伝ってもらった回数のステッパー（− 補助 N ＋）
   function renderSeg() {
     if (!focus) return;
     const s = sets()[focus.index];
-    const modes = focus.field === 'w' ? WEIGHT_MODES : REPS_MODES;
-    const on = focus.field === 'w' ? s?.kind : focus.repsMode;
-    kseg.innerHTML = modes.map(([key, label]) =>
-      `<button type="button" data-mode="${key}" aria-pressed="${key === on}">${label}</button>`).join('');
+    if (focus.field === 'w') {
+      kseg.className = 'kseg';
+      kseg.setAttribute('aria-label', '重さの種類');
+      kseg.innerHTML = WEIGHT_MODES.map(([key, label]) =>
+        `<button type="button" data-mode="${key}" aria-pressed="${key === s?.kind}">${label}</button>`).join('');
+      return;
+    }
+    const n = s?.assistedReps ?? 0;
+    kseg.className = 'kseg kstep';
+    kseg.setAttribute('aria-label', '手伝ってもらった回数');
+    kseg.innerHTML = `
+      <button type="button" data-step="-1" aria-label="補助を1回減らす" aria-disabled="${n === 0}">−</button>
+      <span class="n" aria-live="polite">補助 ${n}</span>
+      <button type="button" data-step="1" aria-label="補助を1回増やす">＋</button>`;
   }
 
   function placeBar() {
@@ -305,38 +272,12 @@ export function mountRecord(root, ctx, exerciseId) {
     const input = e.target;
     if (!(input instanceof HTMLInputElement) || !input.dataset.field) return;
     const index = Number(input.dataset.i);
-    focus = { input, index, field: input.dataset.field, repsMode: 'reps' };
-    if (hintMode === 'b') fillFromHint(index, focus.field);
-    const t = editTarget(sets(), index, focus.field, focus.repsMode);
-    input.value = t.value;
-    input.placeholder = t.hint;
-    if (hintMode === 'b' && t.value) {
-      // 打てば置きかわるように、全部を選ぶ（iOS では focus のあとでないと効かないことがあるため、もう一度）
-      input.select();
-      setTimeout(() => { if (document.activeElement === input) input.setSelectionRange(0, input.value.length); }, 0);
-    }
+    focus = { input, index, field: input.dataset.field };
+    const s = sets()[index];
+    input.value = s ? editValue(s, focus.field) : '';
     openBar();
     updateCells();
     renderBest();
-  }
-
-  // 欄の薄い値をそのまま記録する。もとのセットの値（重さ、または回数とうち補助）を patch にする
-  function hintPatch(list, i, field) {
-    const s = list[i];
-    if (!s) return null;
-    if (field === 'w') {
-      if (s.weight !== null) return null;
-      const src = hintSource(list, i, hasWeight(s.kind));
-      return src ? { weight: src.weight } : null;
-    }
-    if (s.reps !== null || s.assistedReps !== null) return null;
-    const src = hintSource(list, i, hasReps);
-    return src ? { reps: src.reps, assistedReps: src.assistedReps } : null;
-  }
-
-  function fillFromHint(index, field) {
-    const patch = hintPatch(sets(), index, field);
-    if (patch) write(index, patch);
   }
 
   // 行を作り直す前に、入力を終える（iOS ではボタンを押しても input のフォーカスが外れないため）
@@ -367,36 +308,40 @@ export function mountRecord(root, ctx, exerciseId) {
     const text = sanitizeInput(input.value, { decimal });
     if (text !== input.value) input.value = text;
     const n = parseNumber(text);
-    const key = focus.field === 'w' ? 'weight' : focus.repsMode;
-    let patch = { [key]: n };
-    // 案 A：片方を入れたら、同じ行のもう片方の薄い値も記録する
-    if (hintMode === 'a' && n !== null) {
-      const other = hintPatch(sets(), focus.index, focus.field === 'w' ? 'r' : 'w');
-      if (other) patch = { ...other, ...patch };
-    }
-    write(focus.index, patch);
+    write(focus.index, { [focus.field === 'w' ? 'weight' : 'reps']: n });
     updateCells();
     renderBest();
   }
 
   function onMode(mode) {
-    if (!focus) return;
-    const list = sets();
-    const s = list[focus.index];
+    if (!focus || focus.field !== 'w') return;
+    const s = sets()[focus.index];
     if (!s) return;
-    if (focus.field === 'w') {
-      if (s.kind === mode) return;
+    if (s.kind !== mode) {
       // 種類を変えたら、重さの数字の意味が変わるので空にする
       write(focus.index, { kind: mode, weight: null });
-    } else {
-      focus.repsMode = mode;
+      focus.input.value = '';
     }
-    const t = editTarget(sets(), focus.index, focus.field, focus.repsMode);
-    focus.input.value = t.value;
-    focus.input.placeholder = t.hint;
+    // 自重：同じセットの回数の欄へ移る（キーボードは閉じない）。加重するときは重さの欄をもう一度押して重りの重さを打つ
+    if (mode === 'bodyweight') {
+      const reps = focus.input.closest('.srow').querySelector('input[data-field="r"]');
+      reps.focus();
+      if (document.activeElement === reps) return; // onFocusIn で表示を書きかえる
+    }
     renderSeg();
     updateCells();
     renderBest();
+  }
+
+  // 手伝ってもらった回数を1つ増やす・減らす（0 は null で持つ）
+  function onStep(delta) {
+    if (!focus || focus.field !== 'r') return;
+    const s = sets()[focus.index];
+    if (!s) return;
+    const n = Math.max(0, (s.assistedReps ?? 0) + delta);
+    write(focus.index, { assistedReps: n === 0 ? null : n });
+    renderSeg();
+    updateCells();
   }
 
   // バーのボタンを押しても、input のフォーカスを外さない
@@ -411,6 +356,8 @@ export function mountRecord(root, ctx, exerciseId) {
     // フォーカスが外れていたら戻す（クリックの中なので iOS でもキーボードが出る見込み、未確認）
     if (focus && document.activeElement !== focus.input) focus.input.focus();
     if (btn.dataset.mode) onMode(btn.dataset.mode);
+    // 押せない「−」は disabled にしない（disabled の上では pointerdown を止められず、フォーカスが外れるおそれがあるため）
+    if (btn.dataset.step && btn.getAttribute('aria-disabled') !== 'true') onStep(Number(btn.dataset.step));
     // ⏱ は作業⑤まで何もしない
   }
 

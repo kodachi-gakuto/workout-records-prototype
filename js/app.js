@@ -6,27 +6,7 @@ import { mountRecord } from './record-screen.js';
 import { esc, showTopToast } from './ui.js';
 
 const app = document.getElementById('app');
-const state = { data: null, recoveredKey: null, persisted: undefined, screen: null, hintMode: 'c' };
-
-// 薄い値の扱い（a／b／c。ユーザーに選んでもらうまでの仮の切り替え）。wrp:data とは別のキーに覚える
-const HINT_KEY = 'wrp:hint';
-const HINT_MODES = {
-  a: '片方を入れたら、もう片方の薄い値も記録',
-  b: 'タップすると薄い値が入る',
-  c: '薄い値はヒントだけ（記録しない）',
-};
-
-function readHintMode() {
-  let mode = null;
-  try {
-    mode = new URLSearchParams(location.search).get('hint');
-    if (mode in HINT_MODES) localStorage.setItem(HINT_KEY, mode);
-    else mode = localStorage.getItem(HINT_KEY);
-  } catch {
-    // localStorage が使えないときは標準のまま
-  }
-  return mode in HINT_MODES ? mode : 'c';
-}
+const state = { data: null, recoveredKey: null, persisted: undefined, screen: null };
 
 // data を差しかえて保存する。保存できなかったら上に短く出す
 function commit(data) {
@@ -38,7 +18,6 @@ function commit(data) {
 
 const ctx = {
   getData: () => state.data,
-  get hintMode() { return state.hintMode; },
   commit,
   // 画面を閉じるときに、画面の状態は変えずに保存だけする
   saveOnly: (data) => saveData(data),
@@ -94,12 +73,6 @@ function renderList() {
         <button type="button" class="add-ex" id="add-ex">仮の種目を足す</button>
         <button type="button" class="add-ex" id="add-ex-prev">前回の記録つきの仮の種目を足す</button>
       </div>
-      <section class="hint-modes" aria-label="薄い値の扱い">
-        <p>薄い値の扱い：今は <b>${state.hintMode.toUpperCase()}</b>（${HINT_MODES[state.hintMode]}）</p>
-        <p>${Object.keys(HINT_MODES).map((m) => m === state.hintMode
-          ? `<b>${m.toUpperCase()}</b>`
-          : `<a href="?hint=${m}#/">${m.toUpperCase()}</a>`).join('／')}</p>
-      </section>
       <dl class="check" aria-label="確かめ用の表示">
         ${state.recoveredKey ? '<dt>お知らせ</dt><dd>前のデータを読めなかったため、別の場所に残しました</dd>' : ''}
         <dt>データの版</dt><dd>${esc(state.data.version)}（アプリ ${CURRENT_VERSION}）</dd>
@@ -148,7 +121,6 @@ const errorText = (error) =>
 
 function main() {
   markTextSize();
-  state.hintMode = readHintMode();
   try {
     const loaded = loadData();
     state.data = loaded.data;

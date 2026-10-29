@@ -193,8 +193,8 @@ export function parseNumber(text) {
 export const numText = (n) => (isNum(n) ? String(n) : '');
 
 // ---- 表示の文字 ----
-// parts：[{ text, unit?, extra?, tight? }] の配列。画面ではこれを数字と小さい単位に分けて出す。
-// 大きい文字では part ごとに折り返す。tight は前の part との間を空けない
+// parts：[{ text, unit?, extra?, tight?, caret? }] の配列。画面ではこれを数字と小さい単位に分けて出す。
+// 大きい文字では part ごとに折り返す。tight は前の part との間を空けない。caret は text のうしろに打つ位置の印を出す
 
 export function weightParts(s) {
   if (!isValidSet(s)) return null;
@@ -208,8 +208,27 @@ export function repsParts(s) {
   if (!isValidSet(s)) return null;
   const parts = [];
   if (isNum(s.reps)) parts.push({ text: String(s.reps), unit: '回' });
-  if (isNum(s.assistedReps)) parts.push({ text: '補助' + s.assistedReps, extra: true });
+  if (isNum(s.assistedReps)) parts.push(assistedPart(s.assistedReps));
   return parts.length ? parts : null;
+}
+
+// 手伝ってもらった回数（reps に足す数）
+const assistedPart = (n) => ({ text: '+補助' + n, extra: true });
+
+// 打っている間の欄の文字。text は input に打っている文字（"10." のような途中の形もそのまま出す）
+// field：'w'（重さ）／'r'（回数）
+export function editParts(s, field, text) {
+  if (!isValidSet(s)) return null;
+  if (field === 'r') {
+    const parts = [{ text, unit: '回', caret: true }];
+    if (isNum(s.assistedReps)) parts.push(assistedPart(s.assistedReps));
+    return parts;
+  }
+  if (s.kind === 'bodyweight') {
+    return [{ text: '自重' }, text ? { text: '+' + text, unit: 'kg', tight: true, caret: true } : { text: '', tight: true, caret: true }];
+  }
+  if (s.kind === 'assist') return [{ text: '補助' }, { text, unit: 'kg', caret: true }];
+  return [{ text, unit: 'kg', caret: true }];
 }
 
 export const partsText = (parts) =>
