@@ -515,7 +515,8 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     const text = mmss(timer ? remaining : restSec());
     const label = timer ? `休憩タイマー 残り${text}（押すと止まる）` : `休憩タイマー ${text}（押すと始まる）`;
     $('rec-time').textContent = text;
-    tmBtn.classList.toggle('run', Boolean(timer)); // 動いている間だけオレンジ
+    tmBtn.classList.toggle('run', Boolean(timer)); // 動いている間だけオレンジ（キーボードの上のバーも同じ）
+    kbTimer.classList.toggle('run', Boolean(timer));
     $('kbar-time').textContent = text;
     tmBtn.setAttribute('aria-label', label);
     kbTimer.setAttribute('aria-label', label);

@@ -1377,3 +1377,17 @@ html.lg .hist .ttl {
   color: var(--on-accent);
   font-size: var(--t-foot); /* 時計の大きさは止まっている間と同じ */
 }
+/* キーボードの上のタイマーも、丸いタイマーと同じ決まり（止まっている間はオレンジの時計、動いている間はオレンジの地に白い時計と 19 の太字） */
+.kbar .tbtn .icf {
+  color: var(--accent);
+}
+.kbar .tbtn.run {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-size: max(19px, 1.12rem);
+}
+.kbar .tbtn.run .icf {
+  color: var(--on-accent);
+  font-size: var(--t-sub); /* 時計の大きさは止まっている間と同じ */
+}
