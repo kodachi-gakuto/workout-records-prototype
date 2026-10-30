@@ -1197,13 +1197,3 @@ html.lg .hist .ttl {
 .plist .gap {
   margin-left: 0.3em;
 }
-
-/* 確認用（一時的） */
-.home .demo {
-  display: block;
-  min-height: 44px;
-  margin: 16px auto 0;
-  font-size: var(--t-foot);
-  color: var(--text-sub);
-  text-decoration: underline;
-}

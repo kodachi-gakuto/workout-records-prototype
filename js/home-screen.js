@@ -2,7 +2,6 @@
 import { partBalance, todayExercises, dateLabel, BALANCE_DAYS } from './records.js';
 import { todayString } from './store.js';
 import { esc } from './ui.js';
-import { addDemo, DEMO_ID } from './demo.js'; // 確認用（一時的）
 
 export function mountHome(root, ctx, { recovered = false } = {}) {
   const today = todayString();
@@ -35,7 +34,6 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
       <div class="hcard">${balHtml}</div>
       <h2 class="hlab">今日の種目</h2>
       <div class="hcard" id="home-today">${todayHtml}</div>
-      <button type="button" class="demo" id="home-demo">（確認用）お試しの記録を入れる</button>
     </main>
     <div class="hfoot">
       <a class="cta" href="#/select">＋ 記録する</a>
@@ -45,12 +43,6 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
   document.getElementById('home-today').addEventListener('click', (e) => {
     const row = e.target.closest('.trow');
     if (row) ctx.go(`#/record/${encodeURIComponent(row.dataset.id)}?from=home`);
-  });
-
-  // 確認用（一時的）：お試しの種目を入れて、その記録の画面を開く
-  document.getElementById('home-demo').addEventListener('click', () => {
-    const r = ctx.commit(addDemo(ctx.getData(), today));
-    if (r.ok) ctx.go(`#/record/${DEMO_ID}?from=home`);
   });
 
   return { unmount() {}, flush() {} };
