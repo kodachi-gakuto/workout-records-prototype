@@ -7,7 +7,7 @@ import {
 } from './records.js';
 import { PARTS, todayString } from './store.js';
 import { suggestNames } from './exercise-names.js';
-import { esc } from './ui.js';
+import { esc, iconHtml } from './ui.js';
 
 const SLOP = 10; // これだけ動いたら、横か縦かを決める
 let savedY = 0; // 記録の画面を開く前のスクロールの位置（戻ったときに使う）
@@ -30,9 +30,9 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
   root.innerHTML = `
     <main class="sel">
       <div class="navb" id="sel-bar">
-        <button type="button" class="back" id="sel-home">‹ ホーム</button>
+        <button type="button" class="back" id="sel-home">${iconHtml('chevronLeft')}<span class="bl">ホーム</span></button>
         <span class="mid" id="sel-mid" aria-hidden="true">種目を選ぶ</span>
-        <button type="button" class="plus" id="sel-add" aria-label="新しい種目を登録">＋</button>
+        <button type="button" class="plus" id="sel-add" aria-label="新しい種目を登録">${iconHtml('plus')}</button>
       </div>
       <h1 class="big" id="sel-title">種目を選ぶ</h1>
       <div class="chips" id="sel-chips" role="group" aria-label="部位">${capsHtml('part')}</div>

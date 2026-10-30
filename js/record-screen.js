@@ -8,7 +8,7 @@ import {
   firstMissing, todaySetCount, FIELD_INPUT, REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
 } from './records.js';
 import { todayString } from './store.js';
-import { esc, partsHtml, setListHtml, showTopToast } from './ui.js';
+import { esc, iconHtml, partsHtml, setListHtml, showTopToast } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
@@ -121,7 +121,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   root.innerHTML = `
     <main class="rec">
       <div class="navb">
-        <button type="button" class="back" id="rec-back">${fromHome ? '‹ ホーム' : '‹ 種目'}</button>
+        <button type="button" class="back" id="rec-back">${iconHtml('chevronLeft')}<span class="bl">${fromHome ? 'ホーム' : '種目'}</span></button>
         <button type="button" class="save" id="rec-save">保存</button>
       </div>
       <div class="ttl-row">

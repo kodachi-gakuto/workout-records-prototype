@@ -2,7 +2,7 @@
 // 今日より前の記録を新しい順に、記録の画面の「前回」と同じカードで並べる（たたまない・押しても何も起きない）
 import { findExercise, exerciseHistory, shortDate } from './records.js';
 import { todayString } from './store.js';
-import { esc, setListHtml } from './ui.js';
+import { esc, iconHtml, setListHtml } from './ui.js';
 
 // 日付の行の右はし：「🏆」「↑2.5kg」「🏆 ↑2.5kg」
 const markText = (w) => [w.best ? '🏆' : '', w.up !== null ? `↑${w.up}kg` : ''].filter(Boolean).join(' ');
@@ -28,7 +28,7 @@ export function mountHistory(root, ctx, exerciseId, { fromHome = false } = {}) {
   root.innerHTML = `
     <main class="hist">
       <div class="navb">
-        <button type="button" class="back" id="hist-back">‹ ${esc(exercise.name)}</button>
+        <button type="button" class="back" id="hist-back">${iconHtml('chevronLeft')}<span class="bl">${esc(exercise.name)}</span></button>
       </div>
       <h1 class="ttl">${esc(exercise.name)}の履歴</h1>
       ${list.length ? list.map(cardHtml).join('') : '<div class="card prev"><p class="first">まだ記録がありません</p></div>'}

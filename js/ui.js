@@ -5,6 +5,15 @@ export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// アイコン。枠（.icf）の高さを横の文字の行の高さと同じにし、絵は枠の真ん中に置く（大きさは em で、文字の設定についてくる）
+const ICONS = {
+  chevronLeft: '<svg class="i-chev" viewBox="0 0 11 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.3 1.7L1.7 9.5l7.6 7.8"/></svg>',
+  plus: '<svg class="i-plus" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 1.5v15M1.5 9h15"/></svg>',
+};
+export function iconHtml(name) {
+  return `<span class="icf" aria-hidden="true">${ICONS[name]}</span>`;
+}
+
 // [{ text, unit?, extra?, tight?, caret? }] を、数字と小さい単位の HTML にする
 export function partsHtml(parts) {
   return (parts ?? []).map((p, i) => {
