@@ -59,9 +59,13 @@ button {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  margin: 20px 0 12px;
+  margin: var(--sp-8) 0 var(--sp-2); /* まとまりの間 32、見出し→カード 8 */
   font-size: var(--t-title3);
   font-weight: 700;
+}
+.home h1 + .hlab,
+.home .note + .hlab {
+  margin-top: var(--sp-4); /* 画面の見出し→最初のまとまり 16 */
 }
 .hlab small {
   font-size: var(--t-foot);
@@ -71,7 +75,7 @@ button {
 .hcard {
   background: var(--surface);
   border-radius: 18px;
-  padding: 6px 18px;
+  padding: var(--sp-1) var(--card-x);
 }
 .hcard .none {
   margin: 0;
@@ -222,7 +226,7 @@ html.lg .trow .nm {
   opacity: 1;
 }
 .sel .big {
-  margin: 4px 0 4px;
+  margin: 4px 0 var(--sp-2); /* 札のバーの上の 8 と合わせて、見出し→札 16 */
   font-size: var(--t-title1);
   font-weight: 700;
   line-height: 1.25;
@@ -250,9 +254,9 @@ html.lg .trow .nm {
   top: 44px;
   z-index: 4;
   display: flex;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0 calc(-1 * var(--side));
-  padding: 8px var(--side) 10px;
+  padding: var(--sp-2) var(--side);
   background: var(--bg);
   overflow-x: auto;
   scrollbar-width: none;
@@ -271,9 +275,6 @@ html.lg .chips .cap {
   padding: 0 16px;
 }
 
-.psec .lab {
-  margin: 20px 0 8px;
-}
 .pcard {
   background: var(--surface);
   border-radius: 18px;
@@ -284,7 +285,7 @@ html.lg .chips .cap {
   min-height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 var(--card-x);
   font-size: var(--t-sub);
   color: var(--text-sub);
 }
@@ -297,7 +298,7 @@ html.lg .chips .cap {
   content: "";
   position: absolute;
   top: 0;
-  left: 18px;
+  left: var(--card-x);
   right: 0;
   z-index: 2;
   height: 1px;
@@ -332,7 +333,7 @@ html.lg .chips .cap {
   gap: 12px;
   width: 100%;
   min-height: 52px;
-  padding: 8px 14px 8px 18px;
+  padding: 8px 14px 8px var(--card-x);
   background: var(--surface);
   color: var(--text);
   text-align: left;
@@ -755,7 +756,7 @@ html.lg .ttl {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin: 24px 0 8px;
+  margin: var(--sp-4) 0 var(--sp-2); /* 画面の見出し→「前回」16、見出し→カード 8 */
 }
 .lab-row .lab {
   margin: 0;
@@ -773,15 +774,19 @@ html.lg .ttl {
 }
 
 .lab {
-  margin: 24px 0 8px;
-  font-size: var(--t-head);
+  margin: var(--sp-8) 0 var(--sp-2); /* まとまりの間 32、見出し→カード 8。ホームの見出しと同じ 20 太字 */
+  font-size: var(--t-title3);
   font-weight: 700;
+  line-height: 1.5;
+}
+.psec:first-child .lab {
+  margin-top: var(--sp-2); /* 札のバーの下の 8 と合わせて、札→最初の部位 16 */
 }
 
 .card {
   background: var(--surface);
   border-radius: 18px;
-  padding: 4px 18px;
+  padding: var(--sp-1) var(--card-x);
 }
 
 /* 前回 */
@@ -819,8 +824,9 @@ html.lg .ttl {
   display: grid;
   grid-template-columns: 1.6em minmax(0, 1fr) minmax(0, 1fr) 44px;
   gap: 10px;
-  align-items: baseline;
-  padding: 6px 0;
+  align-items: center;
+  min-height: 36px; /* 押せない表の行 */
+  padding: 4px 0;
   border-top: 1px solid var(--line);
 }
 .prow > span:first-child {
