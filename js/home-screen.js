@@ -32,7 +32,7 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
       ${recovered ? '<p class="note">前のデータを読めなかったため、別の場所に残しました</p>' : ''}
       <h2 class="hlab">部位のバランス<small>直近${BALANCE_DAYS}日</small></h2>
       <div class="hcard">${balHtml}</div>
-      <h2 class="hlab">今日の種目</h2>
+      <h2 class="hlab">今日の種目（更新テスト）</h2>
       <div class="hcard" id="home-today">${todayHtml}</div>
     </main>
     <div class="hfoot">
