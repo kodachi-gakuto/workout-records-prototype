@@ -5,7 +5,7 @@ import { todayString } from './store.js';
 import { esc, iconHtml, setListHtml } from './ui.js';
 
 // 日付の行の右はし：「🏆」「↑2.5kg」「🏆 ↑2.5kg」
-const markText = (w) => [w.best ? '🏆' : '', w.up !== null ? `<span class="up">${iconHtml('arrowUp')}${esc(w.up)}kg</span>` : ''].filter(Boolean).join(' ');
+const markText = (w) => [w.best ? iconHtml('trophy') : '', w.up !== null ? `<span class="up">${iconHtml('arrowUp')}${esc(w.up)}kg</span>` : ''].filter(Boolean).join(' ');
 
 function cardHtml(w) {
   const mark = markText(w);

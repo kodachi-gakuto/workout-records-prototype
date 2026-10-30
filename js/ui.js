@@ -15,6 +15,8 @@ const ICONS = {
   minusInline: '<svg class="i-plusi" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1.2 7h11.6"/></svg>',
   xmark: '<svg class="i-x" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>',
   checkmark: '<svg class="i-check" viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 5.3l3.3 3.3L10.8 1.4"/></svg>',
+  timer: '<svg class="i-timer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 1-6 2.5"/><path d="M12 3.5v4"/><path d="M12 12L7.5 7.5"/></svg>',
+  trophy: '<svg class="i-trophy" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3zm0 4H6v1a2 2 0 0 0 1.2 1.8C7.1 9.2 7 8.6 7 8V7zm10 0v1c0 .6-.1 1.2-.2 1.8A2 2 0 0 0 18 8V7h-1z"/></svg>',
   arrowUp: '<svg class="i-up" viewBox="0 0 8 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10V1.2M1 4.2L4 1.2l3 3"/></svg>',
 };
 // 丸の中に入れる小さな絵（打っている欄の左はしの丸）
@@ -52,14 +54,14 @@ export function setListHtml(sets) {
 }
 
 let topTimer = null;
-// 上の案内。title を渡すと、1行目に太字の title、2行目に text の2行にする
-export function showTopToast(text, ms = 2500, { title = null } = {}) {
+// 上の案内。title を渡すと、1行目に太字の title、2行目に text の2行にする。icon は title の前に置くアイコンの名前
+export function showTopToast(text, ms = 2500, { title = null, icon = null } = {}) {
   const el = document.getElementById('toast-top');
   if (!el) return;
   el.classList.toggle('two', Boolean(title));
   if (title) {
     const b = document.createElement('b');
-    b.textContent = title;
+    b.innerHTML = (icon ? iconHtml(icon) : '') + esc(title);
     const span = document.createElement('span');
     span.textContent = text;
     el.replaceChildren(b, span);

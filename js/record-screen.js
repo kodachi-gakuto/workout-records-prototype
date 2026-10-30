@@ -137,7 +137,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       <div class="card" id="rec-sets"></div>
       <button type="button" class="addset" id="rec-add">${iconHtml('plusInline')}<span>セットを追加</span></button>
     </main>
-    <button type="button" class="tm" id="rec-timer">⏱<span id="rec-time"></span></button>
+    <button type="button" class="tm" id="rec-timer">${iconHtml('timer')}<span id="rec-time"></span></button>
     <div class="ov" id="rest-ov" hidden>
       <div class="rsheet" role="dialog" aria-modal="true" aria-labelledby="rest-ttl">
         <div class="eh">
@@ -167,7 +167,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   function renderBest() {
     const el = $('rec-best');
     el.hidden = openBest === null;
-    el.innerHTML = openBest === null ? '' : `🏆 <b>${esc(openBest)}</b>kg`;
+    el.innerHTML = openBest === null ? '' : `${iconHtml('trophy')}<b>${esc(openBest)}</b>kg`;
   }
 
   function renderPrev() {
@@ -729,7 +729,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     if (saveFailed || todaySetCount(data, exerciseId, today) === 0) return;
     const text = `${exercise.name}を保存しました`;
     const best = bestWeight(data, exerciseId);
-    if (openBest !== null && best !== null && best > openBest) showTopToast(text, 2500, { title: `🏆 新記録 ${best}kg` });
+    if (openBest !== null && best !== null && best > openBest) showTopToast(text, 2500, { title: `新記録 ${best}kg`, icon: 'trophy' });
     else showTopToast(text);
   }
 

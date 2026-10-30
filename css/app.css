@@ -1312,3 +1312,24 @@ html.lg .hist .ttl {
   width: 0.72em; /* 15px で 11px */
   height: 0.42em;
 }
+.icf .i-timer {
+  width: 1em;
+  height: 1em;
+}
+.icf .i-trophy {
+  width: 1em;
+  height: 1em;
+}
+/* トロフィーはオレンジ（✓ と同じ印の扱い） */
+.bst,
+.hist .hd .mark,
+#toast-top b {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.bst .icf,
+.hist .hd .mark .icf:has(.i-trophy),
+#toast-top .icf {
+  color: var(--accent);
+}
