@@ -231,7 +231,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     const el = $('rec-sets');
     el.innerHTML = list.length
       ? list.map((_, i) => `<div class="srow" data-i="${i}">
-          <span class="no">${i + 1}</span>${cellHtml('w', i)}${cellHtml('r', i)}
+          <span class="no"><span class="num">${i + 1}</span><span class="dn" aria-hidden="true">${iconHtml('checkmark')}</span></span>${cellHtml('w', i)}${cellHtml('r', i)}
           <button type="button" class="x" data-del="${i}" aria-label="${i + 1}セット目を消す">${iconHtml('xmark')}</button>
         </div>`).join('')
       : '<p class="nosets">セットがありません</p>';
@@ -244,6 +244,8 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     for (const row of $('rec-sets').querySelectorAll('.srow')) {
       const i = Number(row.dataset.i);
       if (!list[i]) continue;
+      // 重さと回数の両方が入ったセットは、番号をオレンジの ✓ にする（済んだセット）
+      row.classList.toggle('set-done', weightParts(list[i]) !== null && list[i].reps !== null);
       for (const cell of row.querySelectorAll('.in')) {
         const field = cell.dataset.field;
         const input = cell.querySelector('input');
@@ -513,6 +515,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     const text = mmss(timer ? remaining : restSec());
     const label = timer ? `休憩タイマー 残り${text}（押すと止まる）` : `休憩タイマー ${text}（押すと始まる）`;
     $('rec-time').textContent = text;
+    tmBtn.classList.toggle('run', Boolean(timer)); // 動いている間だけオレンジ
     $('kbar-time').textContent = text;
     tmBtn.setAttribute('aria-label', label);
     kbTimer.setAttribute('aria-label', label);
@@ -522,6 +525,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   function onTimerEvent(ev) {
     if (!alive) return;
     if (ev.type === 'tick') renderTimer(ev);
+    if (ev.type === 'done') renderTimer();
   }
 
   function onTimerClick() {

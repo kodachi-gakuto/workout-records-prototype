@@ -867,8 +867,31 @@ small.u {
   border-top: 1px solid var(--line);
 }
 .srow .no {
+  display: flex;
+  align-items: center;
   color: var(--text-sub);
   font-size: var(--t-sub);
+}
+/* 済んだセット：番号の代わりにオレンジの丸に白い ✓（22×22。文字でない部品なので 3.4 で足りる） */
+.srow .dn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.srow.set-done .dn {
+  display: inline-flex;
+}
+.srow.set-done .num {
+  position: absolute; /* 見た目は消し、読み上げには番号を残す */
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 .nosets {
   margin: 0;
@@ -1339,4 +1362,18 @@ html.lg .hist .ttl {
 .hist .hd .mark .icf:has(.i-trophy),
 #toast-top .icf {
   color: var(--accent);
+}
+/* タイマー：止まっている間は白い丸にオレンジの時計、動いている間はオレンジの丸に白い時計と 19 の太字（オレンジの上の白い文字は大きい文字の基準） */
+.tm .icf {
+  color: var(--accent);
+}
+.tm.run {
+  background: var(--accent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  color: var(--on-accent);
+  font-size: max(19px, 1.12rem);
+}
+.tm.run .icf {
+  color: var(--on-accent);
+  font-size: var(--t-foot); /* 時計の大きさは止まっている間と同じ */
 }
