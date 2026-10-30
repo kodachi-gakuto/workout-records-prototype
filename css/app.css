@@ -276,25 +276,19 @@ body.sheet-open {
   from { transform: translateY(100%); }
 }
 
-/* 登録・編集。上のバーは固定で、中がはみ出すときは中だけスクロールする */
+/* 登録・編集。上から固定のほぼ全画面。キーボードが出ても動かさない。上のバーは固定で、中がはみ出すときは中だけスクロールする */
 .esheet {
   position: fixed;
+  top: calc(env(safe-area-inset-top) + 12px);
   left: 0;
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100% - env(safe-area-inset-top) - 8px);
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: #fff;
   border-radius: 14px 14px 0 0;
   animation: sheet-up 0.25s ease;
-}
-.esheet.vv {
-  bottom: auto; /* visualViewport で top を決める */
-}
-.esheet.kb {
-  padding-bottom: 0; /* キーボードが出ている間は、下の safe area の余白はいらない */
 }
 .eh {
   flex: 0 0 auto;

@@ -297,24 +297,6 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     }
   }
 
-  // 下の端をキーボードの上（visualViewport の下）に合わせる。高すぎるときは上の端を画面の上に合わせ、中をスクロールする
-  function placeSheet() {
-    if (editOv.hidden) return;
-    const vv = window.visualViewport;
-    if (!vv) {
-      panel.classList.remove('vv', 'kb');
-      panel.style.top = '';
-      panel.style.maxHeight = '';
-      return;
-    }
-    panel.classList.add('vv');
-    panel.classList.toggle('kb', vv.height < document.documentElement.clientHeight - 120);
-    const safeTop = parseFloat(getComputedStyle(document.body).paddingTop) || 0;
-    const maxH = vv.height - safeTop - 8;
-    panel.style.maxHeight = `${maxH}px`;
-    panel.style.top = `${vv.offsetTop + vv.height - Math.min(panel.offsetHeight, maxH)}px`;
-  }
-
   // 押した処理の中から呼ぶ（同期して focus() するため）
   function openEdit(id) {
     const e = id ? findExercise(ctx.getData(), id) : null;
@@ -330,9 +312,6 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     editOv.hidden = false;
     syncBody();
     input.focus({ preventScroll: true });
-    placeSheet();
-    // キーボードが出きったあとにもう一度合わせる
-    setTimeout(placeSheet, 350);
   }
 
   function closeEdit() {
@@ -417,10 +396,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
 
   // ---- つなぐ ----
   const vv = window.visualViewport;
-  const onViewport = () => {
-    placeChips();
-    placeSheet();
-  };
+  const onViewport = () => placeChips();
   $('sel-home').addEventListener('click', () => ctx.replace('#/'));
   $('sel-add').addEventListener('click', () => {
     closeRow(false);
@@ -451,7 +427,6 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
   window.addEventListener('wheel', unlock, { passive: true });
   window.addEventListener('resize', onViewport);
   vv?.addEventListener('resize', onViewport);
-  vv?.addEventListener('scroll', placeSheet);
 
   renderList();
   active = null;
@@ -472,7 +447,6 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
       window.removeEventListener('wheel', unlock);
       window.removeEventListener('resize', onViewport);
       vv?.removeEventListener('resize', onViewport);
-      vv?.removeEventListener('scroll', placeSheet);
     },
     flush() {},
   };
