@@ -281,29 +281,45 @@ export function previousWorkout(data, exerciseId, today = todayString()) {
   return best;
 }
 
-// 歴代の最高（仮）：すべての日の kind "kg" のセットの重さの最大。なければ null
+// 歴代の最高に数えるセット：kind "kg" で、重さ > 0 かつ回数 > 0
+const countsForBest = (s) => s.kind === 'kg' && isNum(s.weight) && s.weight > 0 && isNum(s.reps) && s.reps > 0;
+
+// セットの中の、数えるセットの重さの最大。なければ null
+function kgMax(sets) {
+  let max = null;
+  for (const s of sets) {
+    if (countsForBest(s) && (max === null || s.weight > max)) max = s.weight;
+  }
+  return max;
+}
+
+// 歴代の最高：すべての日の、数えるセット（countsForBest）の重さの最大。なければ null
 export function bestWeight(data, exerciseId) {
   let max = null;
   for (const w of workoutsOf(data)) {
     if (!isValidWorkout(w) || w.exerciseId !== exerciseId) continue;
-    for (const s of cleanSets(w.sets)) {
-      if (s.kind === 'kg' && isNum(s.weight) && s.weight > 0 && (max === null || s.weight > max)) max = s.weight;
-    }
+    const m = kgMax(cleanSets(w.sets));
+    if (m !== null && (max === null || m > max)) max = m;
   }
   return max;
 }
 
-// kind "kg" のセットの重さの最大（bestWeight と同じ数え方）。なければ null
-function kgMax(sets) {
-  let max = null;
-  for (const s of sets) {
-    if (s.kind === 'kg' && isNum(s.weight) && s.weight > 0 && (max === null || s.weight > max)) max = s.weight;
-  }
-  return max;
+// 空でないのに欠けている所：回数が空、または kind が kg・補助で重さが空（自重は重さなしでよい）。
+// 戻り値：最初の1つ { index, field: 'w' | 'r', more（ほかにも欠けがあるか） }。なければ null
+// 同じセットの中では、重さ → 回数の順（画面の左から）
+export function firstMissing(sets) {
+  const found = [];
+  cleanSets(sets).forEach((s, index) => {
+    if (isEmptySet(s)) return;
+    if (s.kind !== 'bodyweight' && !isNum(s.weight)) found.push({ index, field: 'w' });
+    if (!isNum(s.reps)) found.push({ index, field: 'r' });
+  });
+  return found.length ? { ...found[0], more: found.length > 1 } : null;
 }
 
 // 種目の履歴：今日より前の記録を新しい順に [{ id, date, startedAt, sets, best, up }]。
 // sets は空でないものだけ。空のセットしかない記録は出さない。同じ日は startedAt の新しいほうが先。
+// 数えるのは bestWeight と同じセット（kind "kg" で、重さ > 0 かつ回数 > 0）。
 // best：その回の kg の最大が、それより前の全部の回の kg の最大を超えた（前に kg の記録がない回は false）。
 // up：その回の kg の最大が、直前の kg のセットがある回の kg の最大より重いときの差（kg）。そうでなければ null
 export function exerciseHistory(data, exerciseId, today = todayString()) {
@@ -333,20 +349,24 @@ export function exerciseHistory(data, exerciseId, today = todayString()) {
 
 // ---- 入力の文字と数字 ----
 
-// 打った文字を、欄に入れてよい形にする（重さは小数1つまで、回数は整数）
-export function sanitizeInput(text, { decimal }) {
+// 打った文字を、欄に入れてよい形にする。decimal：小数を入れてよい。
+// int：整数の部分のけた数、frac：小数のけた数（既定は重さ：4けた・小数2けた）
+export function sanitizeInput(text, { decimal, int = decimal ? 4 : 3, frac = 2 }) {
   let t = String(text ?? '').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
   if (decimal) {
     t = t.replace(/[,，．]/g, '.').replace(/[^\d.]/g, '');
     const dot = t.indexOf('.');
-    if (dot !== -1) t = t.slice(0, dot + 1) + t.slice(dot + 1).replace(/\./g, '').slice(0, 2);
-    const [int, frac] = t.split('.');
-    t = int.slice(0, 4) + (frac !== undefined ? '.' + frac : '');
+    if (dot !== -1) t = t.slice(0, dot + 1) + t.slice(dot + 1).replace(/\./g, '').slice(0, frac);
+    const [i, f] = t.split('.');
+    t = i.slice(0, int) + (f !== undefined ? '.' + f : '');
   } else {
-    t = t.replace(/\D/g, '').slice(0, 3);
+    t = t.replace(/\D/g, '').slice(0, int);
   }
   return t;
 }
+
+// 欄ごとの打てる形：重さは4けた・小数2けた、回数は3けた・小数1けた
+export const FIELD_INPUT = { w: { decimal: true, int: 4, frac: 2 }, r: { decimal: true, int: 3, frac: 1 } };
 
 export function parseNumber(text) {
   if (text === '' || text === '.') return null;
@@ -379,10 +399,10 @@ export function repsParts(s) {
 // 手伝ってもらった回数（reps のうちの数。10回 補助1 ＝ 10回のうち最後の1回は手伝ってもらった）
 const assistedPart = (n) => ({ text: '（補助' + n + '）', extra: true, tight: true });
 
-// 手伝ってもらった回数を1つ増やせるか。reps に数があれば reps まで。reps が空なら増やせる
+// 手伝ってもらった回数（整数）を1つ増やせるか。reps に数があれば reps まで（8.5回なら8まで）。reps が空なら増やせる
 export function canAddAssist(s) {
   if (!isValidSet(s)) return false;
-  return !isNum(s.reps) || (s.assistedReps ?? 0) < s.reps;
+  return !isNum(s.reps) || (s.assistedReps ?? 0) + 1 <= s.reps;
 }
 
 // 打っている間の欄の文字。text は input に打っている文字（"10." のような途中の形もそのまま出す）

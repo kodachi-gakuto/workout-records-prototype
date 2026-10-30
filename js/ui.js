@@ -21,10 +21,20 @@ export function setListHtml(sets) {
 }
 
 let topTimer = null;
-export function showTopToast(text, ms = 2500) {
+// 上の案内。title を渡すと、1行目に太字の title、2行目に text の2行にする
+export function showTopToast(text, ms = 2500, { title = null } = {}) {
   const el = document.getElementById('toast-top');
   if (!el) return;
-  el.textContent = text;
+  el.classList.toggle('two', Boolean(title));
+  if (title) {
+    const b = document.createElement('b');
+    b.textContent = title;
+    const span = document.createElement('span');
+    span.textContent = text;
+    el.replaceChildren(b, span);
+  } else {
+    el.textContent = text;
+  }
   el.hidden = false;
   clearTimeout(topTimer);
   topTimer = setTimeout(() => { el.hidden = true; }, ms);

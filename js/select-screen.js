@@ -3,9 +3,10 @@
 // 名前の欄は、押した処理の中で同期して focus() する（iOS は、そうしないとキーボードが出ない）。
 import {
   exercisesByPart, findExercise, todaySetCount, addExercise, updateExercise, deleteExercise,
-  hasSameName, tidyName, cutName, isPart, NAME_MAX,
+  hasSameName, tidyName, cutName, isPart, listExercises, NAME_MAX,
 } from './records.js';
 import { PARTS, todayString } from './store.js';
+import { suggestNames } from './exercise-names.js';
 import { esc } from './ui.js';
 
 const SLOP = 10; // これだけ動いたら、横か縦かを決める
@@ -49,6 +50,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
           <input class="nm-in" id="ed-name" type="text" enterkeyhint="done"
             autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="ed-err">
           <p class="err" id="ed-err" hidden><span class="ei" aria-hidden="true">!</span>同じ名前の種目があります</p>
+          <ul class="sug" id="ed-sug" aria-label="名前の候補" hidden></ul>
           <p class="fl pl" id="ed-part-lab">部位</p>
           <div class="pick" id="ed-parts" role="group" aria-labelledby="ed-part-lab">${capsHtml('pick')}</div>
           <button type="button" class="edel" id="ed-del" hidden>種目を削除</button>
@@ -74,6 +76,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
   const panel = $('ed-panel');
   const input = $('ed-name');
   const okBtn = $('ed-ok');
+  const sugList = $('ed-sug');
   const confirmOv = $('sel-confirm');
 
   // ---- 一覧 ----
@@ -297,17 +300,49 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     }
   }
 
+  // ---- 名前の候補（新しく登録するときだけ） ----
+  let sugItems = [];
+  const partLabel = (id) => PARTS.find((p) => p.id === id)?.label ?? '';
+
+  // 打った文字で候補を出し直す（変換中も。欄の値は読むだけで変えない）
+  function renderSuggest() {
+    const show = edit && edit.id === null && input.value !== edit.picked;
+    sugItems = show ? suggestNames(input.value, listExercises(ctx.getData()).map((e) => e.name)) : [];
+    sugList.innerHTML = sugItems.map((s, i) => `<li><button type="button" class="sug-b" data-sug="${i}">
+        <span class="sug-n">${esc(s.name)}</span><span class="sug-p">${esc(partLabel(s.part))}</span>
+      </button></li>`).join('');
+    sugList.hidden = sugItems.length === 0;
+  }
+
+  // 候補を押したら、名前と部位を入れて候補を消す（キーボードは閉じ、「追加」を押せるようにする）
+  function onSuggest(e) {
+    const b = e.target.closest('[data-sug]');
+    const item = b && sugItems[Number(b.dataset.sug)];
+    if (!item || !edit) return;
+    // 先に閉じて変換を確定させてから、値を入れる（変換の途中の文字が残らないように）
+    input.blur();
+    input.value = item.name;
+    edit.picked = item.name;
+    edit.touched = true;
+    edit.part = item.part;
+    renderPick();
+    renderSuggest();
+    validate();
+  }
+
   // 押した処理の中から呼ぶ（同期して focus() するため）
   function openEdit(id) {
     const e = id ? findExercise(ctx.getData(), id) : null;
     if (id && !e) return;
-    edit = { id: e ? e.id : null, part: e ? (isPart(e.part) ? e.part : null) : active, orig: e ? e.name : null, touched: false };
+    // picked：候補から入れた名前（同じ値の間は候補を出さない）
+    edit = { id: e ? e.id : null, part: e ? (isPart(e.part) ? e.part : null) : active, orig: e ? e.name : null, touched: false, picked: null };
     pageY = window.scrollY;
     $('ed-ttl').textContent = e ? '種目の編集' : '新しい種目';
     okBtn.textContent = e ? '保存' : '追加';
     $('ed-del').hidden = !e;
     input.value = e ? e.name : '';
     renderPick();
+    renderSuggest();
     validate();
     editOv.hidden = false;
     syncBody();
@@ -319,6 +354,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     input.blur();
     editOv.hidden = true;
     edit = null;
+    renderSuggest();
     syncBody();
     restoreY(pageY);
   }
@@ -327,6 +363,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     // 変換の途中は切らない（変換が終わったときに切る）
     if (edit) edit.touched = true;
     if (!e.isComposing) fitName();
+    renderSuggest();
     validate();
   }
 
@@ -338,6 +375,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
   function onNameEnd() {
     if (edit) edit.touched = true;
     fitName();
+    renderSuggest();
     validate();
   }
 
@@ -414,6 +452,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
   input.addEventListener('compositionend', onNameEnd);
   input.addEventListener('keydown', onNameKey);
   $('ed-parts').addEventListener('click', onPick);
+  sugList.addEventListener('click', onSuggest);
   $('ed-del').addEventListener('click', () => { if (edit?.id) openConfirm(edit.id); });
   $('cf-del').addEventListener('click', onConfirmDel);
   $('cf-cancel').addEventListener('click', closeConfirm);

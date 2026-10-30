@@ -1,0 +1,40 @@
+/* 種目の登録の、名前の候補（名前の欄のすぐ下。シートは上から出るので、キーボードが出ていても見える） */
+.sug {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sug li + li {
+  border-top: 1px solid var(--line);
+}
+.sug-b {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 0;
+  background: #fff;
+  color: #222;
+  text-align: left;
+  cursor: pointer;
+}
+.sug-b:active {
+  background: var(--field);
+}
+.sug-n {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sug-p {
+  flex: 0 0 auto;
+  font-size: var(--t-foot);
+  color: var(--text-sub);
+}

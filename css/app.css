@@ -577,6 +577,41 @@ body.sheet-open {
 .eh .rc {
   justify-self: end;
 }
+/* 空の欄があるまま離れるときの確かめ */
+.msheet {
+  padding: 20px calc(var(--side) + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(var(--side) + env(safe-area-inset-left));
+}
+.mt {
+  margin: 0;
+  font-size: var(--t-head);
+  font-weight: 700;
+  color: #222;
+  overflow-wrap: anywhere;
+}
+.ms {
+  margin: 4px 0 16px;
+  font-size: var(--t-sub);
+  color: var(--text-sub);
+}
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mb button {
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: max(19px, 1.12rem); /* オレンジの上の白い太字は大きい文字の基準 */
+  font-weight: 700;
+}
+.mfill {
+  background: var(--accent);
+  color: #fff;
+}
+.mkeep {
+  background: #f2f2f2;
+  color: #222;
+}
 .rgrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -875,6 +910,38 @@ small.u {
 .in input::selection {
   background: transparent;
 }
+/* 打っている欄の左はしの丸（↺ 上の行を写す／× この欄を空にする）。押せる広さは欄の高さいっぱい・幅 36px */
+.in .cbtn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 36px;
+  padding-left: 5px;
+}
+.in .cbtn i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--text-sub); /* 行の右の × と同じ灰色 */
+  color: #fff;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+.in.has-btn .disp {
+  padding: 2px 2px 2px 26px;
+}
+.in.has-btn.fit .disp {
+  font-size: var(--t-foot); /* .in.long（15px）より小さく */
+}
 
 .x {
   min-height: 44px;
@@ -1080,6 +1147,13 @@ body.kb-open .tm {
   top: calc(52px + env(safe-area-inset-top));
   justify-content: center;
   padding: 4px 16px;
+}
+/* 2行（1行目は太字） */
+.toast.top.two {
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  text-align: center;
 }
 .toast button {
   min-height: 44px;

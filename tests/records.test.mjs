@@ -7,6 +7,7 @@ import {
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
   shortDate, mmss, elapsedText, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
   todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel, exerciseHistory,
+  firstMissing, FIELD_INPUT,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
 
@@ -118,6 +119,45 @@ test('歴代の最高：kind "kg" の重さの最大。自重・補助は数え�
   assert.equal(bestWeight(d, 'e1'), 62.5);
   assert.equal(bestWeight(createEmptyData(), 'e1'), null);
   assert.equal(bestWeight({ ...createEmptyData(), workouts: [workout('a', TODAY, [set(10, 5, 'bodyweight')])] }, 'e1'), null);
+});
+
+test('歴代の最高：重さ > 0 かつ回数 > 0 のセットだけ数える', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('a', '2026-10-15', [set(100, null), set(90, 0), set(0, 5), set(70, 0.5)]),
+      workout('b', TODAY, [set(120, null)]),
+    ],
+  };
+  assert.equal(bestWeight(d, 'e1'), 70);
+  assert.equal(bestWeight({ ...createEmptyData(), workouts: [workout('a', TODAY, [set(100, null)])] }, 'e1'), null);
+});
+
+test('種目の履歴：回数のないセットは 🏆・↑ に数えない', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('1', '2026-10-10', [set(60, 8)]),
+      workout('2', '2026-10-12', [set(100, null), set(62.5, 5)]), // 100kg は回数なし：62.5 で比べる
+      workout('3', '2026-10-14', [set(90, 0)]), // 回数 0：kg の回にならない
+      workout('4', '2026-10-16', [set(65, 3)]), // 直前の kg の回は 2（62.5）
+    ],
+  };
+  const h = Object.fromEntries(exerciseHistory(d, 'e1', TODAY).map((w) => [w.id, [w.best, w.up]]));
+  assert.deepEqual(h, { 1: [false, null], 2: [true, 2.5], 3: [false, null], 4: [true, 2.5] });
+});
+
+test('空でないのに欠けているセット：回数が空、kg・補助で重さが空。自重は重さなしでよい', () => {
+  assert.equal(firstMissing([]), null);
+  assert.equal(firstMissing([emptySet(), set(60, 10), set(null, 10, 'bodyweight')]), null);
+  assert.deepEqual(firstMissing([set(60, 10), set(60, null)]), { index: 1, field: 'r', more: false });
+  assert.deepEqual(firstMissing([set(null, 10, 'assist')]), { index: 0, field: 'w', more: false });
+  assert.deepEqual(firstMissing([set(null, 10), set(60, null)]), { index: 0, field: 'w', more: true });
+  // 補助の回数だけのセット：重さ → 回数の順
+  assert.deepEqual(firstMissing([set(null, null, 'kg', 1)]), { index: 0, field: 'w', more: true });
+  assert.deepEqual(firstMissing([set(5, null, 'bodyweight')]), { index: 0, field: 'r', more: false });
+  // 形のおかしいセットは飛ばす（index は形の正しいセットで数える）
+  assert.deepEqual(firstMissing([null, set(60, null)]), { index: 0, field: 'r', more: false });
 });
 
 test('種目の履歴：今日より前を新しい順に。空のセット・空の記録・ほかの種目は出さない', () => {
@@ -236,6 +276,13 @@ test('入力の文字を整える', () => {
   assert.equal(sanitizeInput('1.234', { decimal: true }), '1.23');
   assert.equal(sanitizeInput('1.5', { decimal: false }), '15');
   assert.equal(sanitizeInput('12345', { decimal: false }), '123');
+  // 回数：3けた・小数1けたまで
+  assert.equal(sanitizeInput('8.5', FIELD_INPUT.r), '8.5');
+  assert.equal(sanitizeInput('8.55', FIELD_INPUT.r), '8.5');
+  assert.equal(sanitizeInput('1234', FIELD_INPUT.r), '123');
+  assert.equal(sanitizeInput('１０，５', FIELD_INPUT.r), '10.5');
+  assert.equal(sanitizeInput('60.55', FIELD_INPUT.w), '60.55');
+  assert.equal(sanitizeInput('123456', FIELD_INPUT.w), '1234');
   assert.equal(parseNumber(''), null);
   assert.equal(parseNumber('.'), null);
   assert.equal(parseNumber('60.'), 60);
@@ -252,6 +299,7 @@ test('表示の文字', () => {
   assert.equal(partsText(repsParts(set(60, 10, 'kg', 1))), '10回（補助1）');
   assert.equal(partsText(repsParts(set(60, null, 'kg', 2))), '（補助2）');
   assert.equal(repsParts(set(60, null)), null);
+  assert.equal(partsText(repsParts(set(60, 8.5, 'kg', 2))), '8.5回（補助2）');
   assert.equal(shortDate('2026-10-19'), '10/19');
   assert.equal(shortDate('x'), '');
   assert.equal(mmss(120), '2:00');
@@ -285,6 +333,9 @@ test('手伝ってもらった回数を増やせるのは reps まで。reps が
   assert.equal(canAddAssist(set(60, 1, 'kg', 3)), false); // reps を減らして補助より小さくなった
   assert.equal(canAddAssist(set(60, 0)), false);
   assert.equal(canAddAssist(set(60, null)), true);
+  assert.equal(canAddAssist(set(60, 8.5, 'kg', 7)), true); // 小数の回数：補助は整数で 8 まで
+  assert.equal(canAddAssist(set(60, 8.5, 'kg', 8)), false);
+  assert.equal(canAddAssist(set(60, 0.5)), false);
   assert.equal(canAddAssist(set(60, null, 'kg', 5)), true);
   assert.equal(canAddAssist(undefined), false);
 });

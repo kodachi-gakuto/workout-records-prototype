@@ -37,7 +37,7 @@ const ctx = {
 // 休憩タイマーの見張り（画面をまたいで動く。記録の画面は表示だけ）
 ctx.timer = createTimerWatch(ctx);
 
-// 休憩が終わったら、どの画面でも真ん中に知らせを出す（OK を押すまで消えない）
+// 休憩が終わったら、どの画面でも真ん中に知らせを出す（OK か後ろを押すまで消えない）
 function showTimerDone({ sec }) {
   const ov = document.getElementById('done-ov');
   const text = elapsedText(sec);
@@ -47,8 +47,13 @@ function showTimerDone({ sec }) {
   ov.hidden = false;
   document.getElementById('done-ok').focus({ preventScroll: true });
 }
-document.getElementById('done-ok').addEventListener('click', () => {
+function closeTimerDone() {
   document.getElementById('done-ov').hidden = true;
+}
+document.getElementById('done-ok').addEventListener('click', closeTimerDone);
+// 後ろ（暗い所）を押しても、OK と同じく閉じる
+document.getElementById('done-ov').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeTimerDone();
 });
 ctx.timer.subscribe((ev) => {
   if (ev.type === 'done') showTimerDone(ev);

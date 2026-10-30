@@ -5,10 +5,10 @@ import {
   findExercise, findTodayWorkout, ensureTodayWorkout, updateSet, addSet, insertSet, removeSet,
   removeEmptySets, previousWorkout, bestWeight, cleanSets, emptySet, isEmptySet,
   sanitizeInput, parseNumber, numText, weightParts, repsParts, editParts, canAddAssist, shortDate, mmss,
-  REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
+  firstMissing, todaySetCount, FIELD_INPUT, REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
 } from './records.js';
 import { todayString } from './store.js';
-import { esc, partsHtml, setListHtml } from './ui.js';
+import { esc, partsHtml, setListHtml, showTopToast } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
@@ -26,18 +26,29 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     return { unmount() {}, flush() {} };
   }
 
+  // 保存に1回でも失敗したら、離れたときに「保存しました」を出さない
+  let saveFailed = false;
+  function commit(data) {
+    const r = ctx.commit(data);
+    if (!r.ok) saveFailed = true;
+    return r;
+  }
   const today = todayString();
   const prev = previousWorkout(ctx.getData(), exerciseId, today);
-  // 今日の記録がまだないときの行（値を入れるまで保存しない）
+  // 今日の記録がまだないときの行（値を入れるまで保存しない）。空の行を3つ出す
   let pending = [];
   {
     const w = findTodayWorkout(ctx.getData(), exerciseId, today);
     // 保存された配列が空のときだけ消す（形のおかしいセットが残っているときは消さない）
     if (w && w.sets.length === 0) {
-      ctx.commit({ ...ctx.getData(), workouts: ctx.getData().workouts.filter((x) => x !== w) });
+      commit({ ...ctx.getData(), workouts: ctx.getData().workouts.filter((x) => x !== w) });
     }
-    if (!findTodayWorkout(ctx.getData(), exerciseId, today)) pending = [emptySet(prev?.sets[0]?.kind)];
+    if (!findTodayWorkout(ctx.getData(), exerciseId, today)) {
+      pending = Array.from({ length: 3 }, () => emptySet(prev?.sets[0]?.kind));
+    }
   }
+  // 右上の 🏆：開いたときの値のまま変えない（打っている間も、セットを消しても）。離れるときの「新記録」もこれと比べる
+  const openBest = bestWeight(ctx.getData(), exerciseId);
 
   // focus：{ input, index, field: 'w' | 'r' }
   let focus = null;
@@ -47,6 +58,8 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   let suppressClick = false; // 長押しのあとの click で、始める／止めるを動かさない
   let prevOpen = true; // 開くたびに、いつも開いた状態から
   let alive = true;
+  let leaving = false; // 「保存」「‹ 種目」「‹ ホーム」で離れるとき（離れたあとに上の案内を出す）
+  let confirmHash = null; // 空の欄の確かめのシートを開いている間、離れる先
 
   const workout = () => findTodayWorkout(ctx.getData(), exerciseId, today);
   const sets = () => {
@@ -58,19 +71,19 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   function write(index, patch) {
     const w = workout();
     if (w) {
-      ctx.commit(updateSet(ctx.getData(), w.id, index, patch));
+      commit(updateSet(ctx.getData(), w.id, index, patch));
       return;
     }
     pending = pending.map((s, i) => (i === index ? { ...s, ...patch } : s));
     if (pending.some((s) => !isEmptySet(s))) {
-      ctx.commit(ensureTodayWorkout(ctx.getData(), exerciseId, { today, sets: pending }).data);
+      commit(ensureTodayWorkout(ctx.getData(), exerciseId, { today, sets: pending }).data);
       pending = [];
     }
   }
 
   function insertAt(index, set) {
     const w = workout();
-    if (w) ctx.commit(insertSet(ctx.getData(), w.id, index, set));
+    if (w) commit(insertSet(ctx.getData(), w.id, index, set));
     else pending.splice(index, 0, set);
   }
 
@@ -79,7 +92,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     const list = sets();
     const kind = list.length ? list[list.length - 1].kind : (prev?.sets[0]?.kind ?? 'kg');
     const w = workout();
-    if (w) ctx.commit(addSet(ctx.getData(), w.id, emptySet(kind)));
+    if (w) commit(addSet(ctx.getData(), w.id, emptySet(kind)));
     else pending.push(emptySet(kind));
     renderRows();
   }
@@ -89,7 +102,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     const set = sets()[index];
     if (!set) return;
     const w = workout();
-    if (w) ctx.commit(removeSet(ctx.getData(), w.id, index));
+    if (w) commit(removeSet(ctx.getData(), w.id, index));
     else pending.splice(index, 1);
     renderRows();
     showUndo(set, index);
@@ -135,6 +148,16 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
         <div class="rgrid" id="rest-grid">${REST_CHOICES.map((sec) =>
           `<button type="button" data-sec="${sec}" aria-pressed="false">${mmss(sec)}</button>`).join('')}</div>
       </div>
+    </div>
+    <div class="ov" id="miss-ov" hidden>
+      <div class="rsheet msheet" role="dialog" aria-modal="true" aria-labelledby="miss-ttl" aria-describedby="miss-sub">
+        <p class="mt" id="miss-ttl"></p>
+        <p class="ms" id="miss-sub">このままでも保存できます</p>
+        <div class="mb">
+          <button type="button" class="mfill" id="miss-fill">入れる</button>
+          <button type="button" class="mkeep" id="miss-keep">このまま保存</button>
+        </div>
+      </div>
     </div>`;
 
   const $ = (id) => document.getElementById(id);
@@ -142,10 +165,9 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   const kseg = $('kseg');
 
   function renderBest() {
-    const best = bestWeight(ctx.getData(), exerciseId);
     const el = $('rec-best');
-    el.hidden = best === null;
-    el.innerHTML = best === null ? '' : `🏆 <b>${esc(best)}</b>kg`;
+    el.hidden = openBest === null;
+    el.innerHTML = openBest === null ? '' : `🏆 <b>${esc(openBest)}</b>kg`;
   }
 
   function renderPrev() {
@@ -174,14 +196,33 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   // 欄の input に入れる数字（回数の欄は reps。手伝ってもらった回数はバーで増やす）
   const editValue = (s, field) => numText(field === 'w' ? s.weight : s.reps);
 
+  // 重さも回数も小数を打てる（回数は小数1けたまで）
+  // .cbtn：打っている欄の左はしの丸。空なら「↺」（1つ上の行の同じ欄を写す）、数字があれば「×」（この欄を空にする）
   function cellHtml(field, i) {
-    const decimal = field === 'w';
+    const name = field === 'w' ? '重さ' : '回数';
     return `<div class="in" data-field="${field}">
       <span class="disp" aria-hidden="true"></span>
-      <input type="text" inputmode="${decimal ? 'decimal' : 'numeric'}" ${decimal ? '' : 'pattern="[0-9]*"'}
+      <input type="text" inputmode="decimal"
         name="${field}${i + 1}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        enterkeyhint="done" data-i="${i}" data-field="${field}" aria-label="${i + 1}セット目の${decimal ? '重さ' : '回数'}">
+        enterkeyhint="done" data-i="${i}" data-field="${field}" aria-label="${i + 1}セット目の${name}">
+      <button type="button" class="cbtn" data-cbtn="${field}" data-i="${i}" hidden><i aria-hidden="true"></i></button>
     </div>`;
+  }
+
+  // 欄の左はしの丸の種類：'copy'（↺）／'clear'（×）／null（出さない）。フォーカスしている欄だけ
+  function cellButton(list, i, field) {
+    const s = list[i];
+    if (!s) return null;
+    if (field === 'w') {
+      if (s.weight !== null) return 'clear';
+      const up = list[i - 1];
+      if (!up || weightParts(up) === null) return null;
+      // 写しても変わらないとき（上も同じ種類で重さなし）は出さない
+      return up.kind === s.kind && up.weight === null ? null : 'copy';
+    }
+    if (s.reps !== null || s.assistedReps !== null) return 'clear';
+    const up = list[i - 1];
+    return up && repsParts(up) !== null ? 'copy' : null;
   }
 
   // 行を作り直す（フォーカス中は呼ばない）
@@ -212,10 +253,43 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
         disp.innerHTML = partsHtml(v.parts);
         disp.classList.toggle('ph', v.ph);
         cell.classList.toggle('long', v.long);
+        const btn = cell.querySelector('.cbtn');
+        const kind = isFocused ? cellButton(list, i, field) : null;
+        btn.hidden = kind === null;
+        cell.classList.toggle('has-btn', kind !== null);
+        if (kind) {
+          const name = field === 'w' ? '重さ' : '回数';
+          btn.dataset.kind = kind;
+          btn.firstElementChild.textContent = kind === 'copy' ? '↺' : '×';
+          btn.setAttribute('aria-label', kind === 'copy' ? `上のセットの${name}を入れる` : `${name}を消す`);
+        }
+        // 丸のぶん狭くなって文字がはみ出すときは、小さめの文字にする
+        cell.classList.remove('fit');
+        if (kind && disp.scrollWidth > disp.clientWidth) cell.classList.add('fit');
         // 読み上げ用に、今の値を入れておく（フォーカス中は打っている文字のまま）
         if (!isFocused) input.value = editValue(list[i], field);
       }
     }
+  }
+
+  // 欄の左はしの丸を押したとき（フォーカスとキーボードはそのまま）
+  function onCellButton(btn) {
+    if (!focus || btn.closest('.in') !== focus.input.closest('.in')) return;
+    const list = sets();
+    const i = focus.index;
+    const kind = cellButton(list, i, focus.field);
+    if (kind === null) return;
+    if (document.activeElement !== focus.input) focus.input.focus();
+    if (focus.field === 'w') {
+      const up = list[i - 1];
+      write(i, kind === 'copy' ? { kind: up.kind, weight: up.weight } : { weight: null });
+    } else {
+      const up = list[i - 1];
+      write(i, kind === 'copy' ? { reps: up.reps, assistedReps: up.assistedReps } : { reps: null, assistedReps: null });
+    }
+    focus.input.value = editValue(sets()[i], focus.field);
+    renderSeg();
+    updateCells();
   }
 
   // ---- キーボードの上のバー ----
@@ -306,7 +380,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     input.value = s ? editValue(s, focus.field) : '';
     openBar();
     updateCells();
-    renderBest();
   }
 
   // 行を作り直す前に、入力を終える（iOS ではボタンを押しても input のフォーカスが外れないため）
@@ -333,15 +406,13 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   function onInput(e) {
     const input = e.target;
     if (!focus || focus.input !== input) return;
-    const decimal = focus.field === 'w';
-    const text = sanitizeInput(input.value, { decimal });
+    const text = sanitizeInput(input.value, FIELD_INPUT[focus.field]);
     if (text !== input.value) input.value = text;
     const n = parseNumber(text);
     write(focus.index, { [focus.field === 'w' ? 'weight' : 'reps']: n });
     // reps を減らして補助より小さくなっても、補助はそのまま（直さない）
     if (focus.field === 'r') updateStepPlus();
     updateCells();
-    renderBest();
   }
 
   function onMode(mode) {
@@ -361,7 +432,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     }
     renderSeg();
     updateCells();
-    renderBest();
   }
 
   // 手伝ってもらった回数を1つ増やす・減らす（0 は null で持つ）
@@ -461,7 +531,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     }
     // 「元に戻す」が出ている間はヒントを出さない（フラグも立てず、次に押したときに出す）
     if (!undo && needsTimerHint(ctx.getData())) {
-      ctx.commit(markTimerHint(ctx.getData()));
+      commit(markTimerHint(ctx.getData()));
       showHint();
     }
     ctx.timer.toggle(exerciseId);
@@ -491,7 +561,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     press = null;
     suppressClick = true;
     // 長押しで知ったので、案内はもう出さない
-    if (needsTimerHint(ctx.getData())) ctx.commit(markTimerHint(ctx.getData()));
+    if (needsTimerHint(ctx.getData())) commit(markTimerHint(ctx.getData()));
     if (from === 'kbar') endEditing(); // 入力を終えてから開く（キーボードは閉じる）
     openRest();
   }
@@ -542,7 +612,53 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   }
   function onSave() {
     if (kbOpen()) return;
-    ctx.replace('#/select');
+    leave('#/select');
+  }
+
+  // 「保存」「‹ 種目」「‹ ホーム」で離れる。空でないのに欠けているセットがあれば、先にシートで確かめる
+  function leave(hash) {
+    endEditing();
+    const miss = firstMissing(sets());
+    if (miss) {
+      openConfirm(hash, miss);
+      return;
+    }
+    go(hash);
+  }
+  function go(hash) {
+    leaving = true;
+    ctx.replace(hash);
+  }
+
+  // 空の欄の確かめのシート
+  const confirmOv = $('miss-ov');
+  let missAt = null; // { index, field }
+  function openConfirm(hash, miss) {
+    if (!undo) hideUndo(); // 「元に戻す」は消さない（休憩の時間のシートと同じ）
+    confirmHash = hash;
+    missAt = miss;
+    $('miss-ttl').textContent =
+      `${miss.index + 1}セット目の${miss.field === 'w' ? '重さ' : '回数'}${miss.more ? 'ほか' : ''}が入っていません`;
+    confirmOv.hidden = false;
+    document.body.classList.add('sheet-open');
+    $('miss-fill').focus({ preventScroll: true });
+  }
+  function closeConfirm() {
+    confirmOv.hidden = true;
+    confirmHash = null;
+    if (restOv.hidden) document.body.classList.remove('sheet-open');
+  }
+  // 「入れる」：閉じて、その欄にフォーカスする（押した中で focus するので、キーボードが出る）
+  function onFill() {
+    const at = missAt;
+    closeConfirm();
+    const input = $('rec-sets').querySelector(`input[data-i="${at.index}"][data-field="${at.field}"]`);
+    input?.focus();
+  }
+  function onKeepSave() {
+    const hash = confirmHash;
+    closeConfirm();
+    if (hash) go(hash);
   }
 
   // 履歴の画面へ（キーボードが出ていたら閉じてから）
@@ -557,12 +673,21 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   main.addEventListener('focusout', onFocusOut);
   main.addEventListener('input', onInput);
   main.addEventListener('click', (e) => {
+    const cbtn = e.target.closest('[data-cbtn]');
+    if (cbtn) {
+      onCellButton(cbtn);
+      return;
+    }
     const del = e.target.closest('[data-del]');
     if (del) deleteRow(Number(del.dataset.del));
   });
+  // 欄の左はしの丸を押しても、input のフォーカスを外さない
+  const keepCellFocus = (e) => { if (e.target.closest('[data-cbtn]')) e.preventDefault(); };
+  main.addEventListener('pointerdown', keepCellFocus);
+  main.addEventListener('mousedown', keepCellFocus);
   $('rec-add').addEventListener('click', addRow);
   $('rec-hist')?.addEventListener('click', onHistory);
-  $('rec-back').addEventListener('click', () => ctx.replace(fromHome ? '#/' : '#/select'));
+  $('rec-back').addEventListener('click', () => leave(fromHome ? '#/' : '#/select'));
   const save = $('rec-save');
   save.addEventListener('pointerdown', onSaveDown);
   save.addEventListener('mousedown', onSaveDown);
@@ -586,11 +711,27 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   // 後ろ（暗い所）を押したら閉じる
   restOv.addEventListener('click', (e) => { if (e.target === restOv) closeRest(); });
   restOv.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  $('miss-fill').addEventListener('click', onFill);
+  $('miss-keep').addEventListener('click', onKeepSave);
+  // 後ろ（暗い所）を押したら、ただ閉じる（離れない）
+  confirmOv.addEventListener('click', (e) => { if (e.target === confirmOv) closeConfirm(); });
+  confirmOv.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   const offTimer = ctx.timer.subscribe(onTimerEvent);
   const vv = window.visualViewport;
   vv?.addEventListener('resize', onViewport);
   vv?.addEventListener('scroll', onViewport);
   window.addEventListener('resize', onViewport);
+
+  // 離れたあと、移った先の画面の上に出す。空でないセットがなければ出さない。
+  // 開いたときの 🏆 より重くなったら「新記録」も（開いたときに 🏆 がなければ出さない）
+  function showSaved() {
+    const data = ctx.getData();
+    if (saveFailed || todaySetCount(data, exerciseId, today) === 0) return;
+    const text = `${exercise.name}を保存しました`;
+    const best = bestWeight(data, exerciseId);
+    if (openBest !== null && best !== null && best > openBest) showTopToast(text, 2500, { title: `🏆 新記録 ${best}kg` });
+    else showTopToast(text);
+  }
 
   renderBest();
   renderPrev();
@@ -604,6 +745,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       endEditing();
       closeBar();
       closeRest();
+      closeConfirm();
       cancelPress();
       offTimer();
       alive = false;
@@ -624,7 +766,8 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       vv?.removeEventListener('scroll', onViewport);
       window.removeEventListener('resize', onViewport);
       const next = cleaned();
-      if (next) ctx.commit(next);
+      if (next) commit(next);
+      if (leaving) showSaved();
     },
     // 履歴の画面へ行くとき：入力・案内・シートを閉じるだけ（行と今日の入力はそのまま残す）
     suspend() {
@@ -632,6 +775,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       endEditing();
       closeBar();
       closeRest();
+      closeConfirm();
       cancelPress();
       suppressClick = false;
     },
