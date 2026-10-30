@@ -6,7 +6,7 @@ import {
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
   shortDate, mmss, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
-  todaySetCount, exercisesByPart,
+  todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
 
@@ -340,4 +340,118 @@ test('部位が PARTS にない種目は、最後に「部位なし」で出す�
   assert.deepEqual(ids(g, 'chest'), ['b']);
   assert.equal(exercisesByPart(createEmptyData(), TODAY).length, 6);
   assert.doesNotThrow(() => exercisesByPart({ exercises: null, workouts: [null, 'x'] }, TODAY));
+});
+
+// ---- ホーム ----
+
+// 部位ごとに1種目ずつ（c=胸, b=背中, s=肩, a=腕, ab=腹筋, l=脚）と、部位なしの種目 x
+function partsData(workouts) {
+  let data = createEmptyData();
+  for (const [id, part] of [['c', 'chest'], ['b', 'back'], ['s', 'shoulders'], ['a', 'arms'], ['ab', 'abs'], ['l', 'legs'], ['c2', 'chest'], ['x', null]]) {
+    data = addExercise(data, { name: id, part, id, now: new Date(0) }).data;
+  }
+  return { ...data, workouts };
+}
+const days = (data, today = TODAY) => Object.fromEntries(partBalance(data, today).map((p) => [p.id, p.days]));
+const lows = (data, today = TODAY) => partBalance(data, today).filter((p) => p.low).map((p) => p.id);
+
+test('日付をずらす：月またぎ・年またぎ・うるう年', () => {
+  assert.equal(addDays('2026-10-28', -29), '2026-09-29');
+  assert.equal(addDays('2026-03-01', -1), '2026-02-28');
+  assert.equal(addDays('2028-03-01', -1), '2028-02-29');
+  assert.equal(addDays('2027-01-05', -10), '2026-12-26');
+});
+
+test('部位のバランス：今日を含む直近30日（today−29 は入る、today−30 と明日は入らない）', () => {
+  const data = partsData([
+    workout('w1', '2026-09-29', [set(60, 10)], 'c'), // today−29
+    workout('w2', '2026-09-28', [set(60, 10)], 'b'), // today−30
+    workout('w3', TODAY, [set(60, 10)], 's'),
+    workout('w4', '2026-10-29', [set(60, 10)], 'a'), // 明日
+  ]);
+  assert.deepEqual(days(data), { chest: 1, back: 0, shoulders: 1, arms: 0, abs: 0, legs: 0 });
+  // 月をまたぐ：3/1 の30日前の境目は 1/31（うるう年でない年）
+  const leap = partsData([workout('w1', '2027-01-31', [set(1, 1)], 'c'), workout('w2', '2027-01-30', [set(1, 1)], 'b')]);
+  assert.deepEqual(days(leap, '2027-03-01'), { chest: 1, back: 0, shoulders: 0, arms: 0, abs: 0, legs: 0 });
+  // うるう年：2028-03-01 の30日前の境目は 2028-02-01
+  const leap2 = partsData([workout('w1', '2028-02-01', [set(1, 1)], 'c'), workout('w2', '2028-01-31', [set(1, 1)], 'b')]);
+  assert.deepEqual(days(leap2, '2028-03-01'), { chest: 1, back: 0, shoulders: 0, arms: 0, abs: 0, legs: 0 });
+});
+
+test('部位のバランス：同じ日の同じ部位は1日。違う日は別に数える', () => {
+  const data = partsData([
+    workout('w1', TODAY, [set(60, 10)], 'c'),
+    workout('w2', TODAY, [set(20, 10)], 'c2'),
+    workout('w3', '2026-10-20', [set(60, 10)], 'c'),
+  ]);
+  assert.equal(days(data).chest, 2);
+});
+
+test('部位のバランス：空のセットだけの記録・部位なし・消えた種目・形のおかしい記録は数えない', () => {
+  const data = partsData([
+    workout('w1', TODAY, [set(null, null), { kind: 'zzz', weight: 60, reps: 10 }], 'c'),
+    workout('w2', TODAY, [set(60, 10)], 'x'),
+    workout('w3', TODAY, [set(60, 10)], 'gone'),
+    { id: 'w4', exerciseId: 'b', date: '2026/10/28', sets: [set(60, 10)] },
+    null,
+    workout('w5', TODAY, [set(null, null), set(null, 5)], 'l'),
+  ]);
+  assert.deepEqual(days(data), { chest: 0, back: 0, shoulders: 0, arms: 0, abs: 0, legs: 1 });
+});
+
+test('部位のバランス：PARTS の順で6行。いちばん少ない部位に印（同点はすべて、全部同じなら無し）', () => {
+  const all = (ids) => ids.map((id, i) => workout('w' + i, TODAY, [set(60, 10)], id));
+  // 1つだけ少ない
+  const one = partsData(all(['c', 'b', 's', 'a', 'l']));
+  assert.deepEqual(partBalance(one, TODAY).map((p) => p.label), ['胸', '背中', '肩', '腕', '腹筋', '脚']);
+  assert.deepEqual(lows(one), ['abs']);
+  // 同点で複数
+  assert.deepEqual(lows(partsData(all(['c', 'b', 's', 'l']))), ['arms', 'abs']);
+  // 全部同じ日数
+  assert.deepEqual(lows(partsData(all(['c', 'b', 's', 'a', 'ab', 'l']))), []);
+  // 全部0
+  const zero = partBalance(partsData([]), TODAY);
+  assert.deepEqual(zero.map((p) => p.days), [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(zero.filter((p) => p.low), []);
+});
+
+test('今日の種目：startedAt の順。空のセットだけ・消えた種目・ほかの日は出さない。sets は空でないセットの数', () => {
+  const data = partsData([
+    workout('w1', TODAY, [set(60, 10), set(null, null)], 'c', TODAY + 'T09:00:00.000Z'),
+    workout('w2', TODAY, [set(null, 8), set(50, 8), set(40, 8)], 'b', TODAY + 'T08:00:00.000Z'),
+    workout('w3', TODAY, [set(null, null)], 's', TODAY + 'T07:00:00.000Z'),
+    workout('w4', TODAY, [set(60, 10)], 'gone', TODAY + 'T06:00:00.000Z'),
+    workout('w5', '2026-10-27', [set(60, 10)], 'l'),
+    workout('w6', TODAY, [set(60, 10)], 'x', TODAY + 'T10:00:00.000Z'),
+  ]);
+  assert.deepEqual(todayExercises(data, TODAY), [
+    { exerciseId: 'b', name: 'b', sets: 3 },
+    { exerciseId: 'c', name: 'c', sets: 1 },
+    { exerciseId: 'x', name: 'x', sets: 1 },
+  ]);
+  assert.deepEqual(todayExercises(partsData([]), TODAY), []);
+});
+
+test('今日の種目：同じ種目の今日の記録が2つあるときは、最初のものだけ', () => {
+  const data = partsData([
+    workout('w1', TODAY, [set(60, 10)], 'c', TODAY + 'T09:00:00.000Z'),
+    workout('w2', TODAY, [set(60, 10), set(60, 10)], 'c', TODAY + 'T08:00:00.000Z'),
+  ]);
+  assert.deepEqual(todayExercises(data, TODAY), [{ exerciseId: 'c', name: 'c', sets: 1 }]);
+});
+
+test('今日の種目：startedAt が無い記録は上に、その中は記録の順', () => {
+  const data = partsData([
+    workout('w1', TODAY, [set(60, 10)], 'c', TODAY + 'T09:00:00.000Z'),
+    { id: 'w2', exerciseId: 'b', date: TODAY, sets: [set(60, 10)] },
+    { id: 'w3', exerciseId: 's', date: TODAY, sets: [set(60, 10)] },
+  ]);
+  assert.deepEqual(todayExercises(data, TODAY).map((r) => r.exerciseId), ['b', 's', 'c']);
+});
+
+test('ホームの日付の見出し', () => {
+  assert.equal(dateLabel('2026-10-27'), '10月27日（火）');
+  assert.equal(dateLabel('2026-11-01'), '11月1日（日）');
+  assert.equal(dateLabel('2026-10-31'), '10月31日（土）');
+  assert.equal(dateLabel('bad'), '');
 });

@@ -1,13 +1,14 @@
 // 起動と画面の行き来（hash）
-// #/ ＝仮の一覧（作業④でホームに置きかえる）／#/select ＝種目を選ぶ／#/record/<exerciseId> ＝記録の画面
-import { loadData, saveData, requestPersist, todayString, CURRENT_VERSION } from './store.js';
-import { addExercise, listExercises, ensureTodayWorkout } from './records.js';
+// #/ ＝ホーム／#/select ＝種目を選ぶ／#/record/<exerciseId> ＝記録の画面（ホームから開いたときは ?from=home を付ける）
+// 開き直したときは、いつもホームから
+import { loadData, saveData, requestPersist, todayString } from './store.js';
+import { mountHome } from './home-screen.js';
 import { mountRecord } from './record-screen.js';
 import { mountSelect } from './select-screen.js';
 import { esc, showTopToast } from './ui.js';
 
 const app = document.getElementById('app');
-const state = { data: null, recoveredKey: null, persisted: undefined, screen: null, page: null };
+const state = { data: null, recoveredKey: null, screen: null, page: null, fromHome: false, homeDate: null };
 
 // data を差しかえて保存する。保存できなかったら上に短く出す
 function commit(data) {
@@ -27,82 +28,18 @@ const ctx = {
   replace: (hash) => { location.replace(hash); },
 };
 
-// ---- 仮の一覧（ホームの代わり） ----
-const SAMPLES = [
-  ['ベンチプレス', 'chest'],
-  ['懸垂', 'back'],
-  ['スクワット', 'legs'],
-  ['インクラインダンベルプレス', 'chest'],
-  ['ショルダープレス', 'shoulders'],
-];
-
-function nextSample() {
-  const names = new Set(listExercises(state.data).map((e) => e.name));
-  for (let n = 1; ; n += 1) {
-    for (const [name, part] of SAMPLES) {
-      const label = n === 1 ? name : `${name} ${n}`;
-      if (!names.has(label)) return { name: label, part };
-    }
-  }
-}
-
-// 昨日の日付で 60kg×10・60kg×8・57.5kg×8 の記録も一緒に作る（試し用）
-function addSampleWithPrevious() {
-  const { data, exercise } = addExercise(state.data, nextSample());
-  const yesterday = todayString(new Date(Date.now() - 24 * 60 * 60 * 1000));
-  const kg = (weight, reps) => ({ kind: 'kg', weight, reps, assistedReps: null });
-  const sets = [kg(60, 10), kg(60, 8), kg(57.5, 8)];
-  commit(ensureTodayWorkout(data, exercise.id, { today: yesterday, sets }).data);
-}
-
-// ホーム画面のアイコンから開いたか
-function displayMode() {
-  const standalone = globalThis.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
-  return standalone ? 'ホーム画面（standalone）' : 'Safari';
-}
-
-function renderList() {
-  const exercises = listExercises(state.data);
-  const workouts = Array.isArray(state.data.workouts) ? state.data.workouts.length : 0;
-  const persist = state.persisted === undefined ? '確かめ中'
-    : state.persisted === null ? '使えない' : state.persisted ? '許可された' : '許可されなかった';
-  app.innerHTML = `
-    <main class="list">
-      <h1>ホーム（仮）</h1>
-      <a class="cta" href="#/select">本日のトレーニングを追加</a>
-      <div class="add-row">
-        <button type="button" class="add-ex" id="add-ex">仮の種目を足す</button>
-        <button type="button" class="add-ex" id="add-ex-prev">前回の記録つきの仮の種目を足す</button>
-      </div>
-      <dl class="check" aria-label="確かめ用の表示">
-        ${state.recoveredKey ? '<dt>お知らせ</dt><dd>前のデータを読めなかったため、別の場所に残しました</dd>' : ''}
-        <dt>データの版</dt><dd>${esc(state.data.version)}（アプリ ${CURRENT_VERSION}）</dd>
-        <dt>種目の数</dt><dd>${exercises.length}</dd>
-        <dt>記録の数</dt><dd>${workouts}</dd>
-        <dt>persist()</dt><dd>${persist}</dd>
-        <dt>表示の形</dt><dd>${displayMode()}</dd>
-      </dl>
-    </main>`;
-  document.getElementById('add-ex').addEventListener('click', () => {
-    commit(addExercise(state.data, nextSample()).data);
-    renderList();
-  });
-  document.getElementById('add-ex-prev').addEventListener('click', () => {
-    addSampleWithPrevious();
-    renderList();
-  });
-}
-
 function route() {
   state.screen?.unmount();
   state.screen = null;
   window.scrollTo(0, 0);
   const from = state.page;
-  const m = location.hash.match(/^#\/record\/(.+)$/);
-  state.page = m ? 'record' : location.hash === '#/select' ? 'select' : 'list';
+  const wasFromHome = state.fromHome;
+  const m = location.hash.match(/^#\/record\/([^?]+)(?:\?(.*))?$/);
+  state.page = m ? 'record' : location.hash === '#/select' ? 'select' : 'home';
+  state.fromHome = Boolean(m) && m[2] === 'from=home';
   if (state.page === 'select') {
-    // 記録の画面から戻ったときは、記録の画面を開く前のスクロールの位置
-    state.screen = mountSelect(app, ctx, { restore: from === 'record' });
+    // 種目を選ぶ画面から開いた記録の画面から戻ったときは、記録の画面を開く前のスクロールの位置
+    state.screen = mountSelect(app, ctx, { restore: from === 'record' && !wasFromHome });
   } else if (m) {
     let id = null;
     try {
@@ -110,9 +47,10 @@ function route() {
     } catch {
       id = null; // 壊れた hash は「種目が見つかりません」にする
     }
-    state.screen = mountRecord(app, ctx, id);
+    state.screen = mountRecord(app, ctx, id, { fromHome: state.fromHome });
   } else {
-    renderList();
+    state.homeDate = todayString();
+    state.screen = mountHome(app, ctx, { recovered: Boolean(state.recoveredKey) });
   }
 }
 
@@ -136,17 +74,18 @@ function main() {
     app.innerHTML = `<main class="missing"><p>${esc(errorText(error))}</p></main>`;
     return;
   }
+  // 開き直したときはホームから（hash が #/ 以外なら、履歴を積まずに #/ にする）
+  if (location.hash !== '#/') history.replaceState(null, '', location.pathname + location.search + '#/');
   window.addEventListener('hashchange', route);
   // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
   window.addEventListener('pagehide', () => state.screen?.flush());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') state.screen?.flush();
+    // 翌日に戻ってきたときは、ホームを今日の日付で描き直す
+    else if (state.page === 'home' && todayString() !== state.homeDate) route();
   });
   route();
-  requestPersist().then((p) => {
-    state.persisted = p;
-    if (!state.screen) renderList();
-  });
+  requestPersist(); // 結果は画面に出さない
 }
 
 main();

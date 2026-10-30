@@ -147,6 +147,55 @@ export function exercisesByPart(data, today = todayString()) {
   return groups;
 }
 
+// ---- ホーム ----
+
+export const BALANCE_DAYS = 30;
+
+// "2026-03-01" から n 日あとの日付（n は負でもよい）。月またぎ・うるう年は Date に任せる
+export function addDays(date, n) {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// 部位のバランス：[{ id, label, days, low }]。PARTS の順
+// days：今日を含む直近30日に、その部位の種目を記録した日数（同じ日に2種目やっても1日）。
+// 空のセットしかない記録、種目が見つからない記録、部位が PARTS にない種目は数えない。
+// low：いちばん少ない部位（同点はすべて）。全部同じ日数なら、どれも false
+export function partBalance(data, today = todayString()) {
+  const from = addDays(today, -(BALANCE_DAYS - 1));
+  const partOf = new Map();
+  for (const e of listExercises(data)) {
+    if (isPart(e.part) && !partOf.has(e.id)) partOf.set(e.id, e.part);
+  }
+  const days = new Map(PARTS.map((p) => [p.id, new Set()]));
+  for (const w of workoutsOf(data)) {
+    if (!isValidWorkout(w) || w.date < from || w.date > today) continue;
+    const part = partOf.get(w.exerciseId);
+    if (!part || cleanSets(w.sets).every(isEmptySet)) continue;
+    days.get(part).add(w.date);
+  }
+  const counts = PARTS.map((p) => days.get(p.id).size);
+  const min = Math.min(...counts);
+  const max = Math.max(...counts);
+  return PARTS.map((p, i) => ({ id: p.id, label: p.label, days: counts[i], low: min < max && counts[i] === min }));
+}
+
+// 今日の種目：[{ exerciseId, name, sets }]。今日の記録を startedAt の順に。
+// sets は空でないセットの数。空のセットしかない記録と、種目が見つからない記録は出さない
+export function todayExercises(data, today = todayString()) {
+  const seen = new Set();
+  const rows = [];
+  for (const w of workoutsOf(data)) {
+    // 同じ種目の今日の記録が2つあるときは、最初のもの（findTodayWorkout と同じ）
+    if (!isValidWorkout(w) || w.date !== today || seen.has(w.exerciseId)) continue;
+    seen.add(w.exerciseId);
+    const e = findExercise(data, w.exerciseId);
+    const sets = cleanSets(w.sets).filter((s) => !isEmptySet(s)).length;
+    if (e && sets > 0) rows.push({ at: String(w.startedAt ?? ''), exerciseId: e.id, name: e.name, sets });
+  }
+  return rows.sort((a, b) => byText(a.at, b.at)).map(({ exerciseId, name, sets }) => ({ exerciseId, name, sets }));
+}
+
 export function findTodayWorkout(data, exerciseId, today = todayString()) {
   return workoutsOf(data).find((w) => isValidWorkout(w) && w.exerciseId === exerciseId && w.date === today) ?? null;
 }
@@ -316,6 +365,14 @@ export function editParts(s, field, text) {
 
 export const partsText = (parts) =>
   (parts ?? []).map((p, i) => (i > 0 && !p.tight ? ' ' : '') + p.text + (p.unit ?? '')).join('');
+
+// "2026-10-27" → "10月27日（火）"
+export function dateLabel(date) {
+  if (!DATE_RE.test(date ?? '')) return '';
+  const [y, m, d] = date.split('-').map(Number);
+  const week = '日月火水木金土'[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${m}月${d}日（${week}）`;
+}
 
 // "2026-10-19" → "10/19"
 export function shortDate(date) {

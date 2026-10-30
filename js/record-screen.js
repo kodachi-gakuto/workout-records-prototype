@@ -12,10 +12,12 @@ import { esc, partsHtml } from './ui.js';
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
 
-export function mountRecord(root, ctx, exerciseId) {
+// fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
+export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   const exercise = findExercise(ctx.getData(), exerciseId);
   if (!exercise) {
-    root.innerHTML = `<main class="missing"><p>種目が見つかりません</p><p><a href="#/select">種目に戻る</a></p></main>`;
+    const back = fromHome ? '<a href="#/">ホームに戻る</a>' : '<a href="#/select">種目に戻る</a>';
+    root.innerHTML = `<main class="missing"><p>種目が見つかりません</p><p>${back}</p></main>`;
     return { unmount() {}, flush() {} };
   }
 
@@ -99,7 +101,7 @@ export function mountRecord(root, ctx, exerciseId) {
   root.innerHTML = `
     <main class="rec">
       <div class="navb">
-        <button type="button" class="back" id="rec-back">‹ 種目</button>
+        <button type="button" class="back" id="rec-back">${fromHome ? '‹ ホーム' : '‹ 種目'}</button>
         <button type="button" class="save" id="rec-save">保存</button>
       </div>
       <div class="ttl-row">
@@ -412,7 +414,7 @@ export function mountRecord(root, ctx, exerciseId) {
     if (del) deleteRow(Number(del.dataset.del));
   });
   $('rec-add').addEventListener('click', addRow);
-  $('rec-back').addEventListener('click', () => ctx.replace('#/select'));
+  $('rec-back').addEventListener('click', () => ctx.replace(fromHome ? '#/' : '#/select'));
   const save = $('rec-save');
   save.addEventListener('pointerdown', onSaveDown);
   save.addEventListener('mousedown', onSaveDown);
