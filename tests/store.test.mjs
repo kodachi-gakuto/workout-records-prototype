@@ -108,7 +108,6 @@ test('補えない形（配列でないなど）は退避して空のデータ',
   for (const text of [
     '{"version":1,"exercises":{}}',
     '{"version":1,"workouts":"x"}',
-    '{"version":1,"timer":5}',
     '{"version":1,"flags":[]}',
   ]) {
     const s = fakeStorage();
@@ -118,6 +117,27 @@ test('補えない形（配列でないなど）は退避して空のデータ',
     assert.equal(s.getItem(r.recoveredKey), text);
   }
   assert.equal(normalize(null), null);
+});
+
+test('timer の形がおかしい（5・"x"・[] など）ときは、データを捨てずに timer だけ null にする', () => {
+  for (const timer of ['5', '"x"', '[]', 'true']) {
+    const text = `{"version":1,"exercises":[{"id":"e1"}],"workouts":[{"id":"w1"}],"timer":${timer}}`;
+    const s = fakeStorage();
+    s.setItem(STORAGE_KEY, text);
+    const r = loadData(s);
+    assert.equal(r.recoveredKey, null, timer);
+    assert.equal(r.data.timer, null, timer);
+    assert.deepEqual(r.data.workouts, [{ id: 'w1' }], timer);
+    assert.deepEqual(r.data.exercises, [{ id: 'e1' }], timer);
+    assert.equal(s.getItem(STORAGE_KEY), text, timer);
+    assert.equal(keysWith(s, BROKEN_KEY_PREFIX).length, 0, timer);
+  }
+  assert.equal(normalize({ version: 1, timer: [] }).timer, null);
+  // 保存するときも、退避しない
+  const s = fakeStorage();
+  s.setItem(STORAGE_KEY, '{"version":1,"workouts":[],"timer":5}');
+  assert.equal(saveData(createEmptyData(), s).ok, true);
+  assert.equal(keysWith(s, BROKEN_KEY_PREFIX).length, 0);
 });
 
 test('退避の setItem が失敗したら例外が出て、wrp:data は変わらない', () => {

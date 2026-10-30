@@ -6,6 +6,7 @@ import { mountHome } from './home-screen.js';
 import { mountRecord } from './record-screen.js';
 import { mountSelect } from './select-screen.js';
 import { esc, showTopToast } from './ui.js';
+import { createTimerWatch } from './timer.js';
 
 const app = document.getElementById('app');
 const state = { data: null, recoveredKey: null, screen: null, page: null, fromHome: false, homeDate: null };
@@ -27,6 +28,8 @@ const ctx = {
   // 履歴を積まずに移る（戻るで同じ画面に戻らないように）
   replace: (hash) => { location.replace(hash); },
 };
+// 休憩タイマーの見張り（画面をまたいで動く。記録の画面は表示だけ）
+ctx.timer = createTimerWatch(ctx);
 
 function route() {
   state.screen?.unmount();
@@ -76,6 +79,7 @@ function main() {
   }
   // 開き直したときはホームから（hash が #/ 以外なら、履歴を積まずに #/ にする）
   if (location.hash !== '#/') history.replaceState(null, '', location.pathname + location.search + '#/');
+  ctx.timer.start();
   window.addEventListener('hashchange', route);
   // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
   window.addEventListener('pagehide', () => state.screen?.flush());

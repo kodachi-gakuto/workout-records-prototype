@@ -5,12 +5,17 @@ import {
   findExercise, findTodayWorkout, ensureTodayWorkout, updateSet, addSet, insertSet, removeSet,
   removeEmptySets, previousWorkout, bestWeight, cleanSets, emptySet, isEmptySet,
   sanitizeInput, parseNumber, numText, weightParts, repsParts, editParts, canAddAssist, shortDate, mmss,
+  REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
 } from './records.js';
 import { todayString } from './store.js';
 import { esc, partsHtml } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
+const HINT_MS = 3000;
+const LONG_MS = 500; // 長押し
+const LONG_MOVE = 10; // 押している間にこれ以上動いたら長押しをやめる（px）
+const BLINK_MS = 3000;
 
 // fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
 export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
@@ -23,7 +28,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
 
   const today = todayString();
   const prev = previousWorkout(ctx.getData(), exerciseId, today);
-  const rest = mmss(exercise.restSec);
   // 今日の記録がまだないときの行（値を入れるまで保存しない）
   let pending = [];
   {
@@ -38,6 +42,10 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   // focus：{ input, index, field: 'w' | 'r' }
   let focus = null;
   let undo = null; // { set, index, timer }
+  let hintTimer = null; // 「長押しで時間を変えられます」を消すタイマー
+  let press = null; // 長押しの見張り：{ x, y, pointerId, timer, from: 'tm' | 'kbar' }
+  let suppressClick = false; // 長押しのあとの click で、始める／止めるを動かさない
+  let blinkTimer = null;
   let prevOpen = true; // 開くたびに、いつも開いた状態から
   let alive = true;
 
@@ -114,12 +122,22 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       <div class="card" id="rec-sets"></div>
       <button type="button" class="addset" id="rec-add">＋ セットを追加</button>
     </main>
-    <button type="button" class="tm" id="rec-timer" aria-label="休憩タイマー ${rest}">⏱<span>${rest}</span></button>`;
+    <button type="button" class="tm" id="rec-timer">⏱<span id="rec-time"></span></button>
+    <div class="ov" id="rest-ov" hidden>
+      <div class="rsheet" role="dialog" aria-modal="true" aria-labelledby="rest-ttl">
+        <div class="eh">
+          <span></span>
+          <h2 id="rest-ttl">休憩の時間</h2>
+          <button type="button" class="rc" id="rest-close">閉じる</button>
+        </div>
+        <div class="rgrid" id="rest-grid">${REST_CHOICES.map((sec) =>
+          `<button type="button" data-sec="${sec}" aria-pressed="false">${mmss(sec)}</button>`).join('')}</div>
+      </div>
+    </div>`;
 
   const $ = (id) => document.getElementById(id);
   const kbar = $('kbar');
   const kseg = $('kseg');
-  $('kbar-time').textContent = rest;
 
   function renderBest() {
     const best = bestWeight(ctx.getData(), exerciseId);
@@ -273,6 +291,9 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     $('rec-save').classList.remove('off');
     $('rec-save').removeAttribute('aria-disabled');
     kbar.hidden = true;
+    // バーの上へ動かした案内を、元の場所に戻す
+    toast.style.top = '';
+    toast.style.bottom = '';
   }
 
   // ---- 入力のイベント ----
@@ -369,21 +390,39 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     if (btn.dataset.mode) onMode(btn.dataset.mode);
     // 押せない「−」「＋」は disabled にしない（disabled の上では pointerdown を止められず、フォーカスが外れるおそれがあるため）
     if (btn.dataset.step && btn.getAttribute('aria-disabled') !== 'true') onStep(Number(btn.dataset.step));
-    // ⏱ は作業⑤まで何もしない
+    if (btn.id === 'kbar-timer') onTimerClick();
   }
 
   // ---- 元に戻す ----
+  // 下の案内は「元に戻す」と「長押しで時間を変えられます」で共通（重なるときは新しいほうだけ）
   const toast = $('toast-bottom');
   function hideUndo() {
     if (undo) clearTimeout(undo.timer);
     undo = null;
+    clearTimeout(hintTimer);
+    hintTimer = null;
     toast.hidden = true;
+    toast.style.top = '';
+    toast.style.bottom = '';
+    $('undo-btn').hidden = false;
   }
   function showUndo(set, index) {
     hideUndo();
     undo = { set, index, timer: setTimeout(hideUndo, UNDO_MS) };
     $('undo-text').textContent = `${index + 1}セット目を消しました`;
     toast.hidden = false;
+  }
+  function showHint() {
+    hideUndo();
+    $('undo-text').textContent = '長押しで時間を変えられます';
+    $('undo-btn').hidden = true;
+    toast.hidden = false;
+    // キーボードが出ているときは、バーの上に出す
+    if (kbOpen()) {
+      toast.style.bottom = 'auto';
+      toast.style.top = `${kbar.getBoundingClientRect().top - toast.offsetHeight - 8}px`;
+    }
+    hintTimer = setTimeout(hideUndo, HINT_MS);
   }
   function onUndo() {
     if (!undo) return;
@@ -392,6 +431,126 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     endEditing();
     insertAt(index, set);
     renderRows();
+  }
+
+  // ---- 休憩タイマー（見張りは timer.js。ここは表示と押したときだけ） ----
+  const tmBtn = $('rec-timer');
+  const kbTimer = $('kbar-timer');
+  const restSec = () => restSecOf(findExercise(ctx.getData(), exerciseId) ?? exercise);
+
+  // 動いていれば残り（どの種目のタイマーでも）、止まっていればこの種目の restSec
+  function renderTimer({ timer, remaining } = ctx.timer.now()) {
+    const text = mmss(timer ? remaining : restSec());
+    const label = timer ? `休憩タイマー 残り${text}（押すと止まる）` : `休憩タイマー ${text}（押すと始まる）`;
+    $('rec-time').textContent = text;
+    $('kbar-time').textContent = text;
+    tmBtn.setAttribute('aria-label', label);
+    kbTimer.setAttribute('aria-label', label);
+  }
+
+  function blink() {
+    clearTimeout(blinkTimer);
+    for (const el of [tmBtn, kbTimer]) {
+      el.classList.remove('blink');
+      void el.offsetWidth; // 続けて終わったときも、はじめから点滅させる
+      el.classList.add('blink');
+    }
+    blinkTimer = setTimeout(stopBlink, BLINK_MS);
+  }
+  function stopBlink() {
+    clearTimeout(blinkTimer);
+    blinkTimer = null;
+    tmBtn.classList.remove('blink');
+    kbTimer.classList.remove('blink');
+  }
+
+  function onTimerEvent(ev) {
+    if (!alive) return;
+    if (ev.type === 'blink') blink();
+    else renderTimer(ev);
+  }
+
+  function onTimerClick() {
+    if (suppressClick) {
+      suppressClick = false;
+      return;
+    }
+    stopBlink();
+    // 「元に戻す」が出ている間はヒントを出さない（フラグも立てず、次に押したときに出す）
+    if (!undo && needsTimerHint(ctx.getData())) {
+      ctx.commit(markTimerHint(ctx.getData()));
+      showHint();
+    }
+    ctx.timer.toggle(exerciseId);
+  }
+
+  // 長押し
+  function onPressDown(e) {
+    suppressClick = false;
+    cancelPress();
+    if (e.button !== undefined && e.button !== 0) return;
+    press = {
+      x: e.clientX, y: e.clientY, pointerId: e.pointerId,
+      from: e.currentTarget === kbTimer ? 'kbar' : 'tm',
+      timer: setTimeout(onLongPress, LONG_MS),
+    };
+  }
+  function onPressMove(e) {
+    if (!press || e.pointerId !== press.pointerId) return;
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) >= LONG_MOVE) cancelPress();
+  }
+  function cancelPress() {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  }
+  function onLongPress() {
+    const from = press?.from;
+    press = null;
+    suppressClick = true;
+    // 長押しで知ったので、案内はもう出さない
+    if (needsTimerHint(ctx.getData())) ctx.commit(markTimerHint(ctx.getData()));
+    if (from === 'kbar') endEditing(); // 入力を終えてから開く（キーボードは閉じる）
+    openRest();
+  }
+  const noMenu = (e) => e.preventDefault();
+
+  // 長押しのあと、指を離したときの click がシートのボタンに当たらないようにする
+  function onDocClick(e) {
+    if (!suppressClick) return;
+    if (e.target.closest?.('#rec-timer, #kbar-timer')) return; // 丸・バーのボタンでは onTimerClick が消す
+    suppressClick = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  // 次に押したときは、もう止めない（長押しのあとに click が来なかったとき）
+  function onDocDown(e) {
+    if (e.target.closest?.('#rec-timer, #kbar-timer')) return;
+    suppressClick = false;
+  }
+
+  // 休憩の時間のシート
+  const restOv = $('rest-ov');
+  function openRest() {
+    // ヒントは消す。「元に戻す」は消さない（取り消せなくならないように）
+    if (!undo) hideUndo();
+    const cur = restSec();
+    for (const b of $('rest-grid').querySelectorAll('button')) {
+      b.setAttribute('aria-pressed', String(Number(b.dataset.sec) === cur));
+    }
+    restOv.hidden = false;
+    document.body.classList.add('sheet-open');
+  }
+  function closeRest() {
+    restOv.hidden = true;
+    document.body.classList.remove('sheet-open');
+  }
+  function onRestPick(e) {
+    const btn = e.target.closest('button[data-sec]');
+    if (!btn) return;
+    const sec = Number(btn.dataset.sec);
+    closeRest();
+    stopBlink();
+    ctx.timer.startWith(setRestSec(ctx.getData(), exerciseId, sec), exerciseId, sec);
   }
 
   // ---- 戻る ----
@@ -423,6 +582,22 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   kbar.addEventListener('mousedown', keepFocus);
   kbar.addEventListener('click', onBarClick);
   $('undo-btn').addEventListener('click', onUndo);
+  tmBtn.addEventListener('click', onTimerClick);
+  for (const el of [tmBtn, kbTimer]) {
+    el.addEventListener('pointerdown', onPressDown);
+    el.addEventListener('pointermove', onPressMove);
+    el.addEventListener('pointerup', cancelPress);
+    el.addEventListener('pointercancel', cancelPress);
+    el.addEventListener('contextmenu', noMenu);
+  }
+  document.addEventListener('click', onDocClick, true);
+  document.addEventListener('pointerdown', onDocDown, true);
+  $('rest-close').addEventListener('click', closeRest);
+  $('rest-grid').addEventListener('click', onRestPick);
+  // 後ろ（暗い所）を押したら閉じる
+  restOv.addEventListener('click', (e) => { if (e.target === restOv) closeRest(); });
+  restOv.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  const offTimer = ctx.timer.subscribe(onTimerEvent);
   const vv = window.visualViewport;
   vv?.addEventListener('resize', onViewport);
   vv?.addEventListener('scroll', onViewport);
@@ -431,6 +606,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   renderBest();
   renderPrev();
   renderRows();
+  renderTimer();
 
   return {
     // 画面を離れるとき：空のセットを取り除いて保存する
@@ -438,7 +614,20 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       hideUndo();
       endEditing();
       closeBar();
+      closeRest();
+      cancelPress();
+      stopBlink();
+      offTimer();
       alive = false;
+      for (const el of [tmBtn, kbTimer]) {
+        el.removeEventListener('pointerdown', onPressDown);
+        el.removeEventListener('pointermove', onPressMove);
+        el.removeEventListener('pointerup', cancelPress);
+        el.removeEventListener('pointercancel', cancelPress);
+        el.removeEventListener('contextmenu', noMenu);
+      }
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('pointerdown', onDocDown, true);
       kbar.removeEventListener('pointerdown', keepFocus);
       kbar.removeEventListener('mousedown', keepFocus);
       kbar.removeEventListener('click', onBarClick);

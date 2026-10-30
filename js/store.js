@@ -58,10 +58,10 @@ export function normalize(data) {
   if (!isPlainObject(data)) return null;
   const exercises = data.exercises ?? [];
   const workouts = data.workouts ?? [];
-  const timer = data.timer ?? null;
+  // timer の形がおかしいだけなら、データ全体は捨てずに timer を null にする
+  const timer = isPlainObject(data.timer) ? data.timer : null;
   const flags = data.flags ?? {};
   if (!Array.isArray(exercises) || !Array.isArray(workouts)) return null;
-  if (timer !== null && !isPlainObject(timer)) return null;
   if (!isPlainObject(flags)) return null;
   return {
     ...data,

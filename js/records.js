@@ -384,3 +384,68 @@ export function mmss(sec) {
   const s = isNum(sec) && sec > 0 ? Math.round(sec) : DEFAULT_REST_SEC;
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
+
+// ---- 休憩タイマー ----
+// data.timer：{ exerciseId, durationSec, endsAt（終わる時刻のミリ秒） } か null。
+// 表示はいつも endsAt と今の時刻から計算し直す。now は引数で渡せる（テスト用）
+
+export const REST_CHOICES = Array.from({ length: 10 }, (_, i) => (i + 1) * 30); // 0:30〜5:00
+
+// 種目の休憩の時間（形のおかしい値は既定の時間）
+export function restSecOf(exercise) {
+  const s = exercise?.restSec;
+  return isNum(s) && s > 0 ? Math.round(s) : DEFAULT_REST_SEC;
+}
+
+// 種目の休憩の時間を書きかえる（ほかの項目はそのまま）
+export function setRestSec(data, exerciseId, sec) {
+  return {
+    ...data,
+    exercises: exercisesOf(data).map((e) => (isValidExercise(e) && e.id === exerciseId ? { ...e, restSec: sec } : e)),
+  };
+}
+
+// 終わるまでがこれより長いタイマーは、形のおかしいものとして扱う（時計のずれ対策）
+export const MAX_TIMER_MS = 60 * 60 * 1000;
+
+// 使えるタイマー。形がおかしい（exerciseId・endsAt が足りない・終わるまで1時間を超える）か、種目が消えていたら null
+export function validTimer(data, now = Date.now()) {
+  const t = data?.timer;
+  if (!isPlainObject(t) || typeof t.exerciseId !== 'string' || !isNum(t.endsAt)) return null;
+  if (t.endsAt - now > MAX_TIMER_MS) return null;
+  return findExercise(data, t.exerciseId) ? t : null;
+}
+
+// 残りの秒（切り上げ。終わっていたら 0）
+export function remainingSec(timer, now = Date.now()) {
+  return Math.max(0, Math.ceil((timer.endsAt - now) / 1000));
+}
+
+export const isTimerDone = (timer, now = Date.now()) => now >= timer.endsAt;
+
+// 動いているタイマー（終わったものは含めない）。なければ null
+export function runningTimer(data, now = Date.now()) {
+  const t = validTimer(data, now);
+  return t && !isTimerDone(t, now) ? t : null;
+}
+
+// sec を省くと、その種目の restSec で始める
+export function startTimer(data, exerciseId, { now = Date.now(), sec } = {}) {
+  const durationSec = isNum(sec) && sec > 0 ? sec : restSecOf(findExercise(data, exerciseId));
+  return { ...data, timer: { exerciseId, durationSec, endsAt: now + durationSec * 1000 } };
+}
+
+export const stopTimer = (data) => ({ ...data, timer: null });
+
+// 動いていれば止め、止まっていれば（終わったものが残っているときも）始める
+export function toggleTimer(data, exerciseId, now = Date.now()) {
+  return runningTimer(data, now) ? stopTimer(data) : startTimer(data, exerciseId, { now });
+}
+
+// 「長押しで時間を変えられます」をまだ出していないか
+export const needsTimerHint = (data) => data?.flags?.timerHintShown !== true;
+
+export function markTimerHint(data) {
+  const flags = isPlainObject(data?.flags) ? data.flags : {};
+  return { ...data, flags: { ...flags, timerHintShown: true } };
+}
