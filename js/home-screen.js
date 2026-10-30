@@ -24,12 +24,12 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
         <span class="cnt">${r.sets}セット</span>
         <span class="chev" aria-hidden="true">›</span>
       </button>`).join('')
-    : '<p class="none">まだ記録がありません。</p>';
+    : '<p class="none">まだ記録がありません</p>';
 
   root.innerHTML = `
     <main class="home">
       <h1>${esc(dateLabel(today))}</h1>
-      ${recovered ? '<p class="note">前のデータを読めなかったため、別の場所に残しました</p>' : ''}
+      ${recovered ? '<p class="note">前のデータを読めませんでした。記録は消えていません（別の場所に残しました）</p>' : ''}
       <h2 class="hlab">部位のバランス<small>直近${BALANCE_DAYS}日</small></h2>
       <div class="hcard">${balHtml}</div>
       <h2 class="hlab">今日の種目</h2>

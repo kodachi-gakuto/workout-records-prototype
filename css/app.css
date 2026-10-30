@@ -32,7 +32,7 @@ button {
   padding: 0 16px;
   border-radius: 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: max(19px, 1.12rem);
   font-weight: 700;
   text-align: center;
@@ -69,10 +69,8 @@ button {
   color: var(--text-sub);
 }
 .hcard {
-  background: var(--bg);
-  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 18px;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   padding: 6px 18px;
 }
 .hcard .none {
@@ -103,7 +101,7 @@ button {
 .bal .bar {
   height: 8px;
   border-radius: 4px;
-  background: var(--line);
+  background: var(--field);
   overflow: hidden;
 }
 .bal .bar i {
@@ -182,7 +180,7 @@ html.lg .trow .nm {
   color: var(--text-sub);
 }
 
-/* 下に固定の「＋ 記録する」。safe area の内側に置き、うしろは白へのグラデーション */
+/* 下に固定の「＋ 記録する」。safe area の内側に置き、うしろは背景の色へのグラデーション */
 .hfoot {
   position: fixed;
   left: 0;
@@ -194,7 +192,7 @@ html.lg .trow .nm {
     calc(var(--side) + env(safe-area-inset-right))
     calc(12px + env(safe-area-inset-bottom))
     calc(var(--side) + env(safe-area-inset-left));
-  background: linear-gradient(rgba(255, 255, 255, 0), var(--bg) 40%);
+  background: linear-gradient(var(--bg-clear), var(--bg) 40%);
 }
 
 /* ---- 種目を選ぶ ---- */
@@ -234,20 +232,21 @@ html.lg .trow .nm {
   line-height: 1.25;
 }
 
-/* 部位のカプセル */
+/* 部位のカプセル。枠は inset の影で出す（選ぶ前後で大きさ・文字の位置を変えない） */
 .cap {
   min-width: 44px;
   min-height: 44px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #F2F2F2;
-  color: #222;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
+  color: var(--text);
   font-weight: 600;
   white-space: nowrap;
 }
 .cap.on {
-  background: #222;
-  color: #fff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: 700;
 }
 /* バーのすぐ下に残す（top は JS でバーの高さに合わせる）。標準の文字では6つが1行、大きい文字では横にスクロール */
 .chips {
@@ -266,7 +265,7 @@ html.lg .trow .nm {
   display: none;
 }
 .chips.stuck {
-  box-shadow: 0 1px 0 #EFEFEF;
+  box-shadow: 0 1px 0 var(--line);
 }
 .chips .cap {
   flex: 1 1 0;
@@ -280,10 +279,8 @@ html.lg .chips .cap {
   margin: 20px 0 8px;
 }
 .pcard {
-  background: #fff;
-  border: 1px solid #EFEFEF;
+  background: var(--surface);
   border-radius: 18px;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   overflow: hidden; /* ずらした行と、うしろのボタンを角丸で切る */
 }
 .pcard .none {
@@ -293,7 +290,7 @@ html.lg .chips .cap {
   align-items: center;
   padding: 0 18px;
   font-size: var(--t-sub);
-  color: #717171;
+  color: var(--text-sub);
 }
 
 /* 行：前の面（.fg）を左にずらすと、うしろの「編集」「削除」が見える */
@@ -308,7 +305,7 @@ html.lg .chips .cap {
   right: 0;
   z-index: 2;
   height: 1px;
-  background: #EFEFEF;
+  background: var(--line);
 }
 .acts {
   position: absolute;
@@ -320,16 +317,16 @@ html.lg .chips .cap {
 .acts button {
   min-width: 88px;
   padding: 0 16px;
-  color: #fff;
+  color: var(--on-accent);
   font-size: max(19px, 1.12rem); /* 白の太字。大きい文字の基準 */
   font-weight: 700;
   white-space: nowrap;
 }
 .acts .ed {
-  background: #8A8A8E;
+  background: var(--edit);
 }
 .acts .dl {
-  background: #FF3B30;
+  background: var(--danger);
 }
 .fg {
   position: relative;
@@ -340,8 +337,8 @@ html.lg .chips .cap {
   width: 100%;
   min-height: 52px;
   padding: 8px 14px 8px 18px;
-  background: #fff;
-  color: #222;
+  background: var(--surface);
+  color: var(--text);
   text-align: left;
   touch-action: pan-y; /* 縦のスクロールはブラウザーに任せる */
   transition: transform 0.25s ease;
@@ -368,16 +365,16 @@ html.lg .fg .nm {
 }
 .fg .cnt {
   font-size: var(--t-foot);
-  color: #717171;
+  color: var(--text-sub);
 }
 .fg .ck {
-  color: #FC4C02;
+  color: var(--accent);
   font-weight: 700;
 }
 .fg .chev {
   flex: 0 0 auto;
   font-size: 1.2rem;
-  color: #6B6B6B;
+  color: var(--text-sub);
 }
 
 /* ---- 下から出る画面 ---- */
@@ -408,7 +405,7 @@ body.sheet-open {
   display: flex;
   flex-direction: column;
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px 14px 0 0;
   animation: sheet-up 0.25s ease;
 }
@@ -420,7 +417,7 @@ body.sheet-open {
   gap: 8px;
   min-height: 56px;
   padding: 0 calc(var(--side) - 10px);
-  border-bottom: 1px solid #EFEFEF;
+  border-bottom: 1px solid var(--line);
 }
 .eh h2 {
   margin: 0;
@@ -433,7 +430,7 @@ body.sheet-open {
   min-width: 44px;
   padding: 0 10px;
   font-size: var(--t-head);
-  color: #222;
+  color: var(--text);
 }
 .eh .cl {
   justify-self: start;
@@ -475,8 +472,8 @@ body.sheet-open {
   appearance: none;
 }
 .nm-in:focus {
-  border-color: #fc4c02; /* 枠 3.4 */
-  background: #fff;
+  border-color: var(--accent); /* 枠 3.4 */
+  background: var(--surface);
 }
 .err {
   display: flex;
@@ -484,7 +481,7 @@ body.sheet-open {
   gap: 6px;
   margin: 8px 0 0;
   font-size: var(--t-sub);
-  color: #222;
+  color: var(--text);
 }
 .err .ei {
   flex: 0 0 auto;
@@ -494,8 +491,8 @@ body.sheet-open {
   width: 1.25em;
   height: 1.25em;
   border-radius: 50%;
-  background: #FF3B30;
-  color: #fff;
+  background: var(--danger);
+  color: var(--on-accent);
   font-size: var(--t-foot);
   font-weight: 700;
 }
@@ -514,7 +511,7 @@ body.sheet-open {
   margin-top: 32px;
   font-size: var(--t-head);
   font-weight: 600;
-  color: #FF3B30;
+  color: var(--danger);
 }
 
 /* 削除の確認 */
@@ -530,7 +527,7 @@ body.sheet-open {
 }
 .ag,
 .acan {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
 }
 .ag {
@@ -546,14 +543,14 @@ body.sheet-open {
 .as {
   margin: 4px 0 14px;
   font-size: var(--t-sub);
-  color: #717171;
+  color: var(--text-sub);
 }
 .adel {
   width: 100%;
   min-height: 52px;
   border-radius: 12px;
-  background: #fff;
-  color: #FF3B30;
+  background: var(--surface);
+  color: var(--danger);
   font-size: max(19px, 1.12rem); /* 白の上の赤の太字。大きい文字の基準 */
   font-weight: 700;
 }
@@ -561,7 +558,7 @@ body.sheet-open {
   min-height: 56px;
   font-size: max(19px, 1.12rem);
   font-weight: 600;
-  color: #222;
+  color: var(--text);
 }
 /* 休憩の時間。下から出る */
 .rsheet {
@@ -570,7 +567,7 @@ body.sheet-open {
   right: 0;
   bottom: 0;
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px 14px 0 0;
   animation: sheet-up 0.25s ease;
 }
@@ -585,7 +582,7 @@ body.sheet-open {
   margin: 0;
   font-size: var(--t-head);
   font-weight: 700;
-  color: #222;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 .ms {
@@ -606,11 +603,11 @@ body.sheet-open {
 }
 .mfill {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .mkeep {
-  background: #f2f2f2;
-  color: #222;
+  background: var(--field);
+  color: var(--text);
 }
 .rgrid {
   display: grid;
@@ -621,15 +618,15 @@ body.sheet-open {
 .rgrid button {
   min-height: 48px;
   border-radius: 10px;
-  background: #f2f2f2;
-  color: #222;
+  background: var(--field);
+  color: var(--text);
   font-size: max(19px, 1.12rem); /* 選んだボタンは白の上の文字（3.4）なので、大きい文字の基準 */
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .rgrid button[aria-pressed="true"] {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 @media (prefers-reduced-motion: reduce) {
   .ov,
@@ -667,7 +664,7 @@ body.kb-open .rec {
   min-height: 44px;
   min-width: 44px;
   padding: 0 10px;
-  color: #222;
+  color: var(--text);
 }
 .navb .back {
   font-weight: 600;
@@ -714,7 +711,7 @@ html.lg .ttl {
   white-space: nowrap;
 }
 .bst b {
-  color: #222;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -737,7 +734,7 @@ html.lg .ttl {
   padding: 0 10px;
   font-size: var(--t-sub);
   font-weight: 600;
-  color: #222;
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -748,10 +745,8 @@ html.lg .ttl {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 18px;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   padding: 4px 18px;
 }
 
@@ -764,7 +759,7 @@ html.lg .ttl {
   min-height: 44px;
   font-size: var(--t-sub);
   font-weight: 600;
-  color: #222;
+  color: var(--text);
   text-align: left;
 }
 .prev .hd .chev {
@@ -837,8 +832,8 @@ small.u {
   min-width: 0;
 }
 .in:focus-within {
-  border-color: #fc4c02; /* 枠 3.4 */
-  background: #fff;
+  border-color: var(--accent); /* 枠 3.4 */
+  background: var(--surface);
 }
 .in .disp {
   position: absolute;
@@ -852,7 +847,7 @@ small.u {
   font-size: calc(var(--t-head) + 0.12rem);
   font-weight: 600;
   line-height: 1.2;
-  color: #222;
+  color: var(--text);
   text-align: center;
   pointer-events: none;
   overflow: hidden;
@@ -880,7 +875,7 @@ small.u {
   height: 1.1em;
   margin: 0 1px;
   vertical-align: -0.15em;
-  background: #fc4c02;
+  background: var(--accent);
   animation: caret-blink 1s steps(1) infinite;
 }
 @keyframes caret-blink {
@@ -930,7 +925,7 @@ small.u {
   height: 19px;
   border-radius: 50%;
   background: var(--text-sub); /* 行の右の × と同じ灰色 */
-  color: #fff;
+  color: var(--surface); /* 欄の面の色で抜く（ダークでも読める） */
   font-style: normal;
   font-size: 13px;
   font-weight: 700;
@@ -956,11 +951,12 @@ small.u {
   width: 100%;
   min-height: 48px;
   margin-top: 12px;
-  border: 1px solid var(--line);
   border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
   font-size: var(--t-head);
   font-weight: 600;
-  color: #222;
+  color: var(--text);
 }
 
 /* タイマー。押すと始まる／止まる、長押しで休憩の時間のシート */
@@ -972,8 +968,8 @@ small.u {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline), 0 4px 16px rgba(0, 0, 0, 0.18); /* ダークでは影が見えないので、枠で縁を出す */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -981,7 +977,7 @@ small.u {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-  color: #222;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 body.kb-open .tm {
@@ -1007,7 +1003,7 @@ body.kb-open .tm {
   max-width: 320px;
   padding: 24px 20px 18px;
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -1027,7 +1023,7 @@ body.kb-open .tm {
   min-height: 48px;
   border-radius: 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: max(19px, 1.12rem); /* 白い文字（3.4）なので、大きい文字の基準 */
   font-weight: 700;
 }
@@ -1046,8 +1042,8 @@ body.kb-open .tm {
   gap: 8px;
   min-height: var(--bar-h);
   padding: 6px calc(10px + env(safe-area-inset-right)) 6px calc(10px + env(safe-area-inset-left));
-  background: #f2f2f4;
-  border-top: 1px solid #c8c8cc;
+  background: var(--field);
+  border-top: 1px solid var(--outline);
   font-size: 14px;
 }
 .kbar.vv {
@@ -1055,7 +1051,7 @@ body.kb-open .tm {
 }
 .kseg {
   display: flex;
-  background: #e3e3e8;
+  background: var(--seg);
   border-radius: 9px;
   padding: 2px;
   min-width: 0;
@@ -1064,11 +1060,11 @@ body.kb-open .tm {
   min-height: 40px;
   padding: 0 12px;
   border-radius: 7px;
-  color: #222;
+  color: var(--text);
   white-space: nowrap;
 }
 .kseg button[aria-pressed="true"] {
-  background: #fff;
+  background: var(--seg-on);
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
@@ -1080,7 +1076,7 @@ body.kb-open .tm {
   min-width: 44px;
   min-height: 44px;
   padding: 0;
-  background: #fff;
+  background: var(--seg-on);
   font-size: 1.25rem;
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
@@ -1088,7 +1084,7 @@ body.kb-open .tm {
 .kstep button[aria-disabled="true"] {
   background: transparent;
   box-shadow: none;
-  color: #8e8e93;
+  color: var(--off);
 }
 .kstep .n {
   padding: 0 12px;
@@ -1108,10 +1104,10 @@ body.kb-open .tm {
   min-height: 40px;
   padding: 0 12px;
   border-radius: 999px;
-  background: #fff;
-  border: 1px solid #c8c8cc;
+  background: var(--seg-on);
+  border: 1px solid var(--outline);
   font-weight: 700;
-  color: #222;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .kbar .fin {
@@ -1120,7 +1116,7 @@ body.kb-open .tm {
   padding: 0 6px;
   font-size: 16px;
   font-weight: 700;
-  color: #222;
+  color: var(--text);
 }
 
 /* 案内（元に戻す・保存できませんでした） */
@@ -1136,8 +1132,8 @@ body.kb-open .tm {
   min-height: 48px;
   padding: 4px 6px 4px 16px;
   border-radius: 12px;
-  background: #222;
-  color: #fff; /* 16.1 */
+  background: var(--toast-bg);
+  color: var(--toast-text);
   font-size: var(--t-sub);
 }
 .toast.bottom {
@@ -1158,7 +1154,7 @@ body.kb-open .tm {
 .toast button {
   min-height: 44px;
   padding: 0 10px;
-  color: #fff;
+  color: var(--toast-text);
   font-weight: 700;
   text-decoration: underline;
   white-space: nowrap;
@@ -1171,6 +1167,14 @@ body.kb-open .tm {
 /* ---- 種目の履歴の画面（カードは「前回」と同じ .card.prev） ---- */
 .hist {
   padding: 0 var(--side) calc(32px + env(safe-area-inset-bottom));
+}
+/* 左上の「‹ 種目名」。長い名前は1行で「…」 */
+.hist .navb .back {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hist .ttl {
   margin: 4px 0 16px;

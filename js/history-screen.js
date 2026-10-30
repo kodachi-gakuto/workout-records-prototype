@@ -28,7 +28,7 @@ export function mountHistory(root, ctx, exerciseId, { fromHome = false } = {}) {
   root.innerHTML = `
     <main class="hist">
       <div class="navb">
-        <button type="button" class="back" id="hist-back">‹ 戻る</button>
+        <button type="button" class="back" id="hist-back">‹ ${esc(exercise.name)}</button>
       </div>
       <h1 class="ttl">${esc(exercise.name)}の履歴</h1>
       ${list.length ? list.map(cardHtml).join('') : '<div class="card prev"><p class="first">まだ記録がありません</p></div>'}

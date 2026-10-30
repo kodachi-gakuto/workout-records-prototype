@@ -41,7 +41,7 @@ ctx.timer = createTimerWatch(ctx);
 function showTimerDone({ sec }) {
   const ov = document.getElementById('done-ov');
   const text = elapsedText(sec);
-  document.getElementById('done-text').textContent = text ? `${text}経過しました。` : '休憩の時間が経過しました。';
+  document.getElementById('done-text').textContent = text ? `${text}たちました` : '休憩の時間がたちました';
   // 入力中ならキーボードを閉じる（打った数字は入力のたびに保存ずみ）
   if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
   ov.hidden = false;

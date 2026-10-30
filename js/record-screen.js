@@ -154,7 +154,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
         <p class="mt" id="miss-ttl"></p>
         <p class="ms" id="miss-sub">このままでも保存できます</p>
         <div class="mb">
-          <button type="button" class="mfill" id="miss-fill">入れる</button>
+          <button type="button" class="mfill" id="miss-fill">入力する</button>
           <button type="button" class="mkeep" id="miss-keep">このまま保存</button>
         </div>
       </div>
@@ -173,7 +173,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   function renderPrev() {
     const el = $('rec-prev');
     if (!prev) {
-      el.innerHTML = '<p class="first">初めての記録です</p>';
+      el.innerHTML = '<p class="first">まだ記録がありません</p>';
       return;
     }
     el.innerHTML = `
@@ -648,7 +648,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     confirmHash = null;
     if (restOv.hidden) document.body.classList.remove('sheet-open');
   }
-  // 「入れる」：閉じて、その欄にフォーカスする（押した中で focus するので、キーボードが出る）
+  // 「入力する」：閉じて、その欄にフォーカスする（押した中で focus するので、キーボードが出る）
   function onFill() {
     const at = missAt;
     closeConfirm();

@@ -43,7 +43,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
         <div class="eh">
           <button type="button" class="cl" id="ed-cancel">キャンセル</button>
           <h2 id="ed-ttl">新しい種目</h2>
-          <button type="button" class="ok" id="ed-ok">追加</button>
+          <button type="button" class="ok" id="ed-ok">登録</button>
         </div>
         <div class="eb">
           <label class="fl" for="ed-name">名前</label>
@@ -338,7 +338,7 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
     edit = { id: e ? e.id : null, part: e ? (isPart(e.part) ? e.part : null) : active, orig: e ? e.name : null, touched: false, picked: null };
     pageY = window.scrollY;
     $('ed-ttl').textContent = e ? '種目の編集' : '新しい種目';
-    okBtn.textContent = e ? '保存' : '追加';
+    okBtn.textContent = e ? '保存' : '登録';
     $('ed-del').hidden = !e;
     input.value = e ? e.name : '';
     renderPick();
