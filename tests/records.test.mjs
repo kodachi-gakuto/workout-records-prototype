@@ -5,7 +5,7 @@ import {
   addExercise, findExercise, listExercises, findTodayWorkout, ensureTodayWorkout,
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
-  shortDate, mmss, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
+  shortDate, mmss, elapsedText, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
   todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
@@ -454,4 +454,13 @@ test('ホームの日付の見出し', () => {
   assert.equal(dateLabel('2026-11-01'), '11月1日（日）');
   assert.equal(dateLabel('2026-10-31'), '10月31日（土）');
   assert.equal(dateLabel('bad'), '');
+});
+
+test('休憩が終わったときの経過の言葉', () => {
+  assert.equal(elapsedText(120), '2分');
+  assert.equal(elapsedText(90), '1分30秒');
+  assert.equal(elapsedText(30), '30秒');
+  assert.equal(elapsedText(300), '5分');
+  assert.equal(elapsedText(null), null);
+  assert.equal(elapsedText(0), null);
 });

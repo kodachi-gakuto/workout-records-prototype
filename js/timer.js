@@ -1,5 +1,5 @@
 // 休憩タイマーの見張り（画面をまたいで動く）
-// 終わる時刻（data.timer.endsAt）を見張り、0:00 になったら音を鳴らす。
+// 終わる時刻（data.timer.endsAt）を見張り、0:00 になったら音を鳴らして知らせ（done）を出す。
 // 終わったタイマーはメモリの中で「終わったもの」として扱い、ここでは保存しない
 // （data の timer は、次に押したときか、起動したときの start() の掃除で消える）。
 // 画面は subscribe して表示だけを受け持つ。import しただけでは document にさわらない。
@@ -46,14 +46,14 @@ export function unlockAudio() {
   }
 }
 
-// 短い音を2回（880Hz、0.18秒ずつ）
+// 「ピピッ」を5回、約3秒（880Hz、0.18秒ずつ）
 function beep() {
   if (!audio) return;
   try {
     if (audio.state !== 'running') audio.resume().catch(() => {});
     const t0 = audio.currentTime + 0.02;
-    for (let i = 0; i < 2; i += 1) {
-      const s = t0 + i * 0.28;
+    for (let i = 0; i < 10; i += 1) {
+      const s = t0 + Math.floor(i / 2) * 0.6 + (i % 2) * 0.22;
       const osc = audio.createOscillator();
       const gain = audio.createGain();
       osc.type = 'sine';
@@ -71,13 +71,13 @@ function beep() {
 }
 
 // ctx：app.js の ctx（getData・commit）
-// subscribe(fn)：fn({ type: 'tick' | 'blink', timer, remaining }) を呼ぶ。戻り値は外す関数
+// subscribe(fn)：fn({ type: 'tick' | 'done', timer, remaining, sec }) を呼ぶ。戻り値は外す関数
 //   tick：表示を変えるとき（1秒ごと・始めた・止めた・終わった）。timer は動いているタイマーか null
-//   blink：終わったので丸を点滅させるとき
+//   done：終わったので知らせを出すとき。sec は終わったタイマーの時間（わからなければ null）
 export function createTimerWatch(ctx) {
   const listeners = new Set();
   let handle = null;
-  let pendingBlink = false; // 裏にいる間に終わった
+  let pendingDone = null; // 知らせをまだ出していない、終わったタイマーの時間（{ sec }）
   let doneKey = null; // 終わったものとして扱った（音・点滅を済ませた）タイマーの印
   let hiddenAt = null; // 見えなくなった時刻
   let shownAt = null; // そのあと見えるようになった時刻
@@ -93,10 +93,10 @@ export function createTimerWatch(ctx) {
     }
   }
 
-  function emit(type) {
+  function emit(type, extra = {}) {
     const now = Date.now();
     const timer = runningTimer(ctx.getData(), now);
-    const ev = { type, timer, remaining: timer ? remainingSec(timer, now) : 0 };
+    const ev = { type, timer, remaining: timer ? remainingSec(timer, now) : 0, ...extra };
     for (const fn of [...listeners]) {
       try {
         fn(ev);
@@ -113,7 +113,7 @@ export function createTimerWatch(ctx) {
     if (t) handle = setTimeout(() => check(), nextCheckDelay(t));
   }
 
-  // 終わっていたら、一度だけ音と点滅。見えていない間に終わっていたら、音は鳴らさずに点滅だけ
+  // 終わっていたら、一度だけ音と知らせ。見えていない間に終わっていたら、音は鳴らさずに知らせだけ
   // （戻ったとき、setTimeout が visibilitychange より先に来ても鳴らさない）
   function check() {
     const now = Date.now();
@@ -121,12 +121,13 @@ export function createTimerWatch(ctx) {
     if (t && isTimerDone(t, now) && timerKey(t) !== doneKey) {
       doneKey = timerKey(t);
       if (isVisible() && !endedWhileHidden(t.endsAt, hiddenAt, shownAt, now)) beep();
-      pendingBlink = true;
+      pendingDone = { sec: Number.isFinite(t.durationSec) ? t.durationSec : null };
     }
     emit('tick');
-    if (pendingBlink && isVisible()) {
-      pendingBlink = false;
-      emit('blink');
+    if (pendingDone && isVisible()) {
+      const extra = pendingDone;
+      pendingDone = null;
+      emit('done', extra);
     }
     schedule();
   }

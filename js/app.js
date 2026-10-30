@@ -7,6 +7,7 @@ import { mountRecord } from './record-screen.js';
 import { mountSelect } from './select-screen.js';
 import { esc, showTopToast } from './ui.js';
 import { createTimerWatch } from './timer.js';
+import { elapsedText } from './records.js';
 
 const app = document.getElementById('app');
 const state = { data: null, recoveredKey: null, screen: null, page: null, fromHome: false, homeDate: null };
@@ -30,6 +31,23 @@ const ctx = {
 };
 // 休憩タイマーの見張り（画面をまたいで動く。記録の画面は表示だけ）
 ctx.timer = createTimerWatch(ctx);
+
+// 休憩が終わったら、どの画面でも真ん中に知らせを出す（OK を押すまで消えない）
+function showTimerDone({ sec }) {
+  const ov = document.getElementById('done-ov');
+  const text = elapsedText(sec);
+  document.getElementById('done-text').textContent = text ? `${text}経過しました。` : '休憩の時間が経過しました。';
+  // 入力中ならキーボードを閉じる（打った数字は入力のたびに保存ずみ）
+  if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
+  ov.hidden = false;
+  document.getElementById('done-ok').focus({ preventScroll: true });
+}
+document.getElementById('done-ok').addEventListener('click', () => {
+  document.getElementById('done-ov').hidden = true;
+});
+ctx.timer.subscribe((ev) => {
+  if (ev.type === 'done') showTimerDone(ev);
+});
 
 function route() {
   state.screen?.unmount();

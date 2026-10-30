@@ -385,6 +385,16 @@ export function mmss(sec) {
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
 
+// 休憩が終わったときの「2分」「1分30秒」「30秒」。わからなければ null
+export function elapsedText(sec) {
+  if (!isNum(sec) || sec <= 0) return null;
+  const s = Math.round(sec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m === 0) return `${r}秒`;
+  return r === 0 ? `${m}分` : `${m}分${r}秒`;
+}
+
 // ---- 休憩タイマー ----
 // data.timer：{ exerciseId, durationSec, endsAt（終わる時刻のミリ秒） } か null。
 // 表示はいつも endsAt と今の時刻から計算し直す。now は引数で渡せる（テスト用）

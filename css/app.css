@@ -905,22 +905,41 @@ body.kb-open .tm {
   -webkit-touch-callout: none;
   touch-action: none;
 }
-/* 0:00 になったとき（約3秒） */
-.tm.blink,
-.kbar .tbtn.blink {
-  animation: tm-blink 0.6s ease-in-out 5;
+/* 休憩が終わったときの知らせ（真ん中のカード） */
+.done-ov {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 calc(28px + env(safe-area-inset-right)) 0 calc(28px + env(safe-area-inset-left));
 }
-@keyframes tm-blink {
-  50% { opacity: 0.3; }
+.done {
+  width: 100%;
+  max-width: 320px;
+  padding: 24px 20px 18px;
+  border-radius: 18px;
+  background: #fff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-@keyframes tm-flash {
-  from { background: #FFE0D1; }
+.done-t {
+  margin: 0;
+  font-size: max(19px, 1.12rem);
+  font-weight: 700;
+  color: var(--text);
 }
-@media (prefers-reduced-motion: reduce) {
-  .tm.blink,
-  .kbar .tbtn.blink {
-    animation: tm-flash 1s ease-out 1;
-  }
+.done-s {
+  margin: 0 0 6px;
+  color: var(--text-sub);
+}
+.done-ok {
+  min-height: 48px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: max(19px, 1.12rem); /* 白い文字（3.4）なので、大きい文字の基準 */
+  font-weight: 700;
 }
 
 /* キーボードの上のバー */

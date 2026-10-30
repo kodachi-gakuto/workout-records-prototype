@@ -15,7 +15,6 @@ const UNDO_MS = 3000;
 const HINT_MS = 3000;
 const LONG_MS = 500; // 長押し
 const LONG_MOVE = 10; // 押している間にこれ以上動いたら長押しをやめる（px）
-const BLINK_MS = 3000;
 
 // fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
 export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
@@ -45,7 +44,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   let hintTimer = null; // 「長押しで時間を変えられます」を消すタイマー
   let press = null; // 長押しの見張り：{ x, y, pointerId, timer, from: 'tm' | 'kbar' }
   let suppressClick = false; // 長押しのあとの click で、始める／止めるを動かさない
-  let blinkTimer = null;
   let prevOpen = true; // 開くたびに、いつも開いた状態から
   let alive = true;
 
@@ -448,26 +446,10 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     kbTimer.setAttribute('aria-label', label);
   }
 
-  function blink() {
-    clearTimeout(blinkTimer);
-    for (const el of [tmBtn, kbTimer]) {
-      el.classList.remove('blink');
-      void el.offsetWidth; // 続けて終わったときも、はじめから点滅させる
-      el.classList.add('blink');
-    }
-    blinkTimer = setTimeout(stopBlink, BLINK_MS);
-  }
-  function stopBlink() {
-    clearTimeout(blinkTimer);
-    blinkTimer = null;
-    tmBtn.classList.remove('blink');
-    kbTimer.classList.remove('blink');
-  }
 
   function onTimerEvent(ev) {
     if (!alive) return;
-    if (ev.type === 'blink') blink();
-    else renderTimer(ev);
+    if (ev.type === 'tick') renderTimer(ev);
   }
 
   function onTimerClick() {
@@ -475,7 +457,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       suppressClick = false;
       return;
     }
-    stopBlink();
     // 「元に戻す」が出ている間はヒントを出さない（フラグも立てず、次に押したときに出す）
     if (!undo && needsTimerHint(ctx.getData())) {
       ctx.commit(markTimerHint(ctx.getData()));
@@ -549,7 +530,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     if (!btn) return;
     const sec = Number(btn.dataset.sec);
     closeRest();
-    stopBlink();
     ctx.timer.startWith(setRestSec(ctx.getData(), exerciseId, sec), exerciseId, sec);
   }
 
@@ -616,7 +596,6 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       closeBar();
       closeRest();
       cancelPress();
-      stopBlink();
       offTimer();
       alive = false;
       for (const el of [tmBtn, kbTimer]) {

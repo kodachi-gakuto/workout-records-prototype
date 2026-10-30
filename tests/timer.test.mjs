@@ -203,7 +203,7 @@ test('見張り：開き直して丸を押していなくても、タイマー�
   });
 });
 
-test('見張り：0:00 になったら音と点滅を一度だけ。data は保存しない', () => {
+test('見張り：0:00 になったら音と知らせを一度だけ。data は保存しない', () => {
   withClock(() => {
     const env = fakeEnv();
     const { ctx, watch, events } = makeWatch();
@@ -211,18 +211,18 @@ test('見張り：0:00 になったら音と点滅を一度だけ。data は保�
     const commits = ctx.commits;
     const before = sound.oscillators;
     mock.timers.tick(90_000 + 100);
-    assert.equal(sound.oscillators - before, 2); // 2回鳴らす
-    assert.equal(events.filter((t) => t === 'blink').length, 1);
+    assert.equal(sound.oscillators - before, 10); // 5回×2（約3秒）
+    assert.equal(events.filter((t) => t === 'done').length, 1);
     assert.equal(ctx.commits, commits); // 0:00 では保存しない
     assert.notEqual(ctx.getData().timer, null); // data の timer は残る
     assert.equal(watch.now().timer, null); // 終わったものは返さない
-    // 戻っても、もう一度は鳴らさない・点滅しない
+    // 戻っても、もう一度は鳴らさない・知らせない
     env.setVisible(false);
     env.fire('visibilitychange');
     env.setVisible(true);
     env.fire('visibilitychange');
-    assert.equal(sound.oscillators - before, 2);
-    assert.equal(events.filter((t) => t === 'blink').length, 1);
+    assert.equal(sound.oscillators - before, 10);
+    assert.equal(events.filter((t) => t === 'done').length, 1);
     assert.equal(ctx.commits, commits);
     // 次に押したら、新しく始める
     watch.toggle('e1');
@@ -230,7 +230,7 @@ test('見張り：0:00 になったら音と点滅を一度だけ。data は保�
   });
 });
 
-test('見張り：裏にいる間に終わったら、戻ったときに setTimeout が先に来ても鳴らさず点滅だけ', () => {
+test('見張り：裏にいる間に終わったら、戻ったときに setTimeout が先に来ても鳴らさず知らせだけ', () => {
   withClock(() => {
     const env = fakeEnv();
     const { ctx, watch, events } = makeWatch();
@@ -244,10 +244,10 @@ test('見張り：裏にいる間に終わったら、戻ったときに setTime
     env.setVisible(true);
     mock.timers.tick(60_000 + 100);
     assert.equal(sound.oscillators, before);
-    assert.equal(events.filter((t) => t === 'blink').length, 1);
+    assert.equal(events.filter((t) => t === 'done').length, 1);
     env.fire('visibilitychange');
     assert.equal(sound.oscillators, before);
-    assert.equal(events.filter((t) => t === 'blink').length, 1);
+    assert.equal(events.filter((t) => t === 'done').length, 1);
     assert.equal(ctx.commits, commits);
   });
 });
@@ -264,18 +264,18 @@ test('見張り：戻ったあとで終わったら鳴らす。裏にいる間�
     env.fire('visibilitychange');
     const before = sound.oscillators;
     mock.timers.tick(80_000 + 100);
-    assert.equal(sound.oscillators - before, 2);
+    assert.equal(sound.oscillators - before, 10);
     // 2回目：隠れている間に setTimeout が来て終わる → 戻ったときに点滅
     watch.toggle('e1');
-    const blinks = events.filter((t) => t === 'blink').length;
+    const dones = events.filter((t) => t === 'done').length;
     env.setVisible(false);
     env.fire('visibilitychange');
     mock.timers.tick(90_000 + 100);
-    assert.equal(events.filter((t) => t === 'blink').length, blinks); // 見えない間は点滅しない
+    assert.equal(events.filter((t) => t === 'done').length, dones); // 見えない間は知らせない
     env.setVisible(true);
     env.fire('visibilitychange');
-    assert.equal(sound.oscillators - before, 2);
-    assert.equal(events.filter((t) => t === 'blink').length, blinks + 1);
+    assert.equal(sound.oscillators - before, 10);
+    assert.equal(events.filter((t) => t === 'done').length, dones + 1);
   });
 });
 
