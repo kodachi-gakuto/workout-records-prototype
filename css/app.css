@@ -418,7 +418,7 @@ body.sheet-open {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--sp-2);
-  min-height: 56px;
+  min-height: 44px; /* 画面の上のバーと同じ高さ */
   padding: 0 calc(var(--side) - 10px); /* ボタンの左右の余白 10 と足して、文字の左はしを本文の 20 にそろえる（上のバーと同じ） */
   border-bottom: 1px solid var(--line);
 }
@@ -550,7 +550,7 @@ body.sheet-open {
 }
 .adel {
   width: 100%;
-  min-height: 52px;
+  min-height: 48px; /* 幅いっぱいのボタンは 48（画面の主なボタンだけ 56） */
   border-radius: 14px;
   background: var(--surface);
   color: var(--danger);
@@ -558,7 +558,7 @@ body.sheet-open {
   font-weight: 700;
 }
 .acan {
-  min-height: 56px;
+  min-height: 48px;
   font-size: max(19px, 1.12rem); /* 上の「削除」と同じ大きさにそろえる */
   font-weight: 600;
   color: var(--text);
@@ -599,7 +599,7 @@ body.sheet-open {
   gap: var(--sp-2);
 }
 .mb button {
-  min-height: 52px;
+  min-height: 48px;
   border-radius: 14px;
   font-size: max(19px, 1.12rem); /* オレンジの上の白い太字は大きい文字の基準 */
   font-weight: 700;
