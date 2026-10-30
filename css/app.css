@@ -683,6 +683,29 @@ html.lg .ttl {
   font-weight: 700;
 }
 
+/* 見出し「前回」と右はしの「履歴 ›」 */
+.lab-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 8px;
+}
+.lab-row .lab {
+  margin: 0;
+}
+.lab-row .more {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  margin: -12px -10px; /* 押せる広さは 44px、見出しの行の高さは変えない */
+  padding: 0 10px;
+  font-size: var(--t-sub);
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+}
+
 .lab {
   margin: 24px 0 8px;
   font-size: var(--t-head);
@@ -1069,6 +1092,31 @@ body.kb-open .tm {
 
 .missing {
   padding: 24px var(--side);
+}
+
+/* ---- 種目の履歴の画面（カードは「前回」と同じ .card.prev） ---- */
+.hist {
+  padding: 0 var(--side) calc(32px + env(safe-area-inset-bottom));
+}
+.hist .ttl {
+  margin: 4px 0 16px;
+  white-space: normal; /* 長い名前は折り返す */
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+html.lg .hist .ttl {
+  display: block;
+  -webkit-line-clamp: none;
+}
+.hist .card + .card {
+  margin-top: 12px;
+}
+.hist .hd {
+  gap: 12px;
+}
+.hist .hd .mark {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 /* part の間（「補助 20kg」）。「8回（補助2）」は詰める */
 .disp .gap,

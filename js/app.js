@@ -1,16 +1,21 @@
 // 起動と画面の行き来（hash）
 // #/ ＝ホーム／#/select ＝種目を選ぶ／#/record/<exerciseId> ＝記録の画面（ホームから開いたときは ?from=home を付ける）
+// #/history/<exerciseId> ＝種目の履歴の画面（記録の画面の ?from=home を引き継ぐ）
 // 開き直したときは、いつもホームから
 import { loadData, saveData, requestPersist, todayString } from './store.js';
 import { mountHome } from './home-screen.js';
 import { mountRecord } from './record-screen.js';
 import { mountSelect } from './select-screen.js';
+import { mountHistory } from './history-screen.js';
 import { esc, showTopToast } from './ui.js';
 import { createTimerWatch } from './timer.js';
 import { elapsedText } from './records.js';
 
 const app = document.getElementById('app');
-const state = { data: null, recoveredKey: null, screen: null, page: null, fromHome: false, homeDate: null };
+// 履歴の画面はここに出す（記録の画面を app に隠したまま残せるように）
+const sub = document.getElementById('sub');
+// kept：履歴の画面を開いている間、隠しておく記録の画面 { screen, id, fromHome, scrollY }
+const state = { data: null, recoveredKey: null, screen: null, page: null, id: null, fromHome: false, homeDate: null, kept: null };
 
 // data を差しかえて保存する。保存できなかったら上に短く出す
 function commit(data) {
@@ -49,26 +54,67 @@ ctx.timer.subscribe((ev) => {
   if (ev.type === 'done') showTimerDone(ev);
 });
 
+// hash を { page, id, fromHome } にする。壊れた hash の id は null（「種目が見つかりません」にする）
+function parseHash(hash) {
+  const m = hash.match(/^#\/(record|history)\/([^?]+)(?:\?(.*))?$/);
+  if (!m) return { page: hash === '#/select' ? 'select' : 'home', id: null, fromHome: false };
+  let id = null;
+  try {
+    id = decodeURIComponent(m[2]);
+  } catch {
+    id = null;
+  }
+  return { page: m[1], id, fromHome: m[3] === 'from=home' };
+}
+
 function route() {
-  state.screen?.unmount();
+  const next = parseHash(location.hash);
+  const cur = state.screen;
   state.screen = null;
-  window.scrollTo(0, 0);
+  // 記録の画面 → 同じ種目の履歴：記録の画面は閉じずに隠しておく（今日の入力・空の行・タイマーの表示をそのまま残す）
+  const toOwnHistory = state.page === 'record' && next.page === 'history'
+    && next.id === state.id && next.fromHome === state.fromHome;
+  if (cur && toOwnHistory && cur.suspend) {
+    cur.suspend();
+    state.kept = { screen: cur, id: state.id, fromHome: state.fromHome, scrollY: window.scrollY };
+  } else {
+    cur?.unmount();
+  }
+  // 隠しておいた記録の画面は、その履歴の画面か、その記録の画面へ行くときだけ残す。ほかへ行くなら閉じる
+  const kept = state.kept;
+  if (kept && !((next.page === 'history' || next.page === 'record') && next.id === kept.id && next.fromHome === kept.fromHome)) {
+    kept.screen.unmount();
+    state.kept = null;
+  }
+
   const from = state.page;
   const wasFromHome = state.fromHome;
-  const m = location.hash.match(/^#\/record\/([^?]+)(?:\?(.*))?$/);
-  state.page = m ? 'record' : location.hash === '#/select' ? 'select' : 'home';
-  state.fromHome = Boolean(m) && m[2] === 'from=home';
-  if (state.page === 'select') {
+  state.page = next.page;
+  state.id = next.id;
+  state.fromHome = next.fromHome;
+  const onHistory = next.page === 'history';
+  app.hidden = onHistory;
+  sub.hidden = !onHistory;
+  if (!onHistory) sub.innerHTML = '';
+
+  // 履歴の画面から戻ったとき：隠しておいた記録の画面を出し直す（スクロールの位置も戻す）
+  if (next.page === 'record' && state.kept) {
+    state.screen = state.kept.screen;
+    const { scrollY } = state.kept;
+    state.kept = null;
+    state.screen.resume();
+    window.scrollTo(0, scrollY);
+    return;
+  }
+
+  window.scrollTo(0, 0);
+  if (next.page === 'select') {
     // 種目を選ぶ画面から開いた記録の画面から戻ったときは、記録の画面を開く前のスクロールの位置
     state.screen = mountSelect(app, ctx, { restore: from === 'record' && !wasFromHome });
-  } else if (m) {
-    let id = null;
-    try {
-      id = decodeURIComponent(m[1]);
-    } catch {
-      id = null; // 壊れた hash は「種目が見つかりません」にする
-    }
-    state.screen = mountRecord(app, ctx, id, { fromHome: state.fromHome });
+  } else if (next.page === 'record') {
+    state.screen = mountRecord(app, ctx, next.id, { fromHome: next.fromHome });
+  } else if (onHistory) {
+    state.screen = mountHistory(sub, ctx, next.id, { fromHome: next.fromHome });
   } else {
     state.homeDate = todayString();
     state.screen = mountHome(app, ctx, { recovered: Boolean(state.recoveredKey) });
@@ -100,9 +146,14 @@ function main() {
   ctx.timer.start();
   window.addEventListener('hashchange', route);
   // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
-  window.addEventListener('pagehide', () => state.screen?.flush());
+  // 履歴の画面を開いている間は、隠しておいた記録の画面も
+  const flushAll = () => {
+    state.screen?.flush();
+    state.kept?.screen.flush();
+  };
+  window.addEventListener('pagehide', flushAll);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') state.screen?.flush();
+    if (document.visibilityState === 'hidden') flushAll();
     // 翌日に戻ってきたときは、ホームを今日の日付で描き直す
     else if (state.page === 'home' && todayString() !== state.homeDate) route();
   });

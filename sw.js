@@ -16,6 +16,7 @@ const PRECACHE_URLS = [
   './css/app.css',
   './css/base.css',
   './js/app.js',
+  './js/history-screen.js',
   './js/home-screen.js',
   './js/record-screen.js',
   './js/records.js',

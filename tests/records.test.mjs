@@ -6,7 +6,7 @@ import {
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
   shortDate, mmss, elapsedText, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
-  todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel,
+  todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel, exerciseHistory,
 } from '../js/records.js';
 import { partsHtml } from '../js/ui.js';
 
@@ -118,6 +118,81 @@ test('歴代の最高：kind "kg" の重さの最大。自重・補助は数え�
   assert.equal(bestWeight(d, 'e1'), 62.5);
   assert.equal(bestWeight(createEmptyData(), 'e1'), null);
   assert.equal(bestWeight({ ...createEmptyData(), workouts: [workout('a', TODAY, [set(10, 5, 'bodyweight')])] }, 'e1'), null);
+});
+
+test('種目の履歴：今日より前を新しい順に。空のセット・空の記録・ほかの種目は出さない', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('b', '2026-10-19', [set(60, 10), emptySet(), set(57.5, 8)]),
+      workout('a', '2026-10-15', [set(55, 10)]),
+      workout('c', '2026-10-21', [emptySet()]), // 空のセットだけ
+      workout('d', '2026-10-22', [set(100, 1)], 'e2'), // ほかの種目
+      workout('t', TODAY, [set(70, 5)]), // 今日
+      workout('f', '2026-10-29', [set(90, 5)]), // 今日より後
+      null,
+    ],
+  };
+  const h = exerciseHistory(d, 'e1', TODAY);
+  assert.deepEqual(h.map((w) => w.id), ['b', 'a']);
+  assert.deepEqual(h[0].sets, [set(60, 10), set(57.5, 8)]);
+  assert.equal(h[0].date, '2026-10-19');
+  assert.deepEqual(exerciseHistory(createEmptyData(), 'e1', TODAY), []);
+  assert.doesNotThrow(() => exerciseHistory({ workouts: null }, 'e1', TODAY));
+});
+
+test('種目の履歴：同じ日に2つあれば startedAt の新しいほうが上', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('late', '2026-10-20', [set(60, 5)], 'e1', '2026-10-20T18:00:00.000Z'),
+      workout('early', '2026-10-20', [set(50, 5)], 'e1', '2026-10-20T08:00:00.000Z'),
+      workout('old', '2026-10-18', [set(40, 5)]),
+    ],
+  };
+  assert.deepEqual(exerciseHistory(d, 'e1', TODAY).map((w) => w.id), ['late', 'early', 'old']);
+});
+
+test('種目の履歴：🏆 は前の全部の回の kg の最大を超えた回。↑ は直前の kg の回より重い分', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('1', '2026-10-10', [set(77.5, 8)]), // 最初の回：どちらも付けない
+      workout('2', '2026-10-12', [set(80, 8), set(70, 10)]), // 🏆 ↑2.5
+      workout('3', '2026-10-14', [set(75, 8)]), // 下がった：なし
+      workout('4', '2026-10-16', [set(10, 8, 'bodyweight')]), // kg のセットがない：なし（比べる相手にもならない）
+      workout('5', '2026-10-18', [set(78, 8)]), // 直前の kg の回（75）より重いが最高（80）は超えない：↑3 だけ
+      workout('6', '2026-10-20', [set(78, 8)]), // 同じ：なし
+      workout('7', '2026-10-22', [set(80.1, 3), set(500, 1, 'assist')]), // 🏆 ↑2.1（補助は数えない）
+      workout('8', '2026-10-24', [set(60.1, 3)]), // 下がった
+      workout('9', '2026-10-26', [set(60.2, 3)]), // ↑0.1（浮動小数の誤差が出ない）
+    ],
+  };
+  const h = Object.fromEntries(exerciseHistory(d, 'e1', TODAY).map((w) => [w.id, [w.best, w.up]]));
+  assert.deepEqual(h, {
+    1: [false, null],
+    2: [true, 2.5],
+    3: [false, null],
+    4: [false, null],
+    5: [false, 3],
+    6: [false, null],
+    7: [true, 2.1],
+    8: [false, null],
+    9: [false, 0.1],
+  });
+});
+
+test('種目の履歴：前に kg の記録がない最初の kg の回には 🏆・↑ を付けない', () => {
+  const d = {
+    ...createEmptyData(),
+    workouts: [
+      workout('bw', '2026-10-10', [set(null, 10, 'bodyweight')]),
+      workout('k1', '2026-10-12', [set(0, 10), set(40, 10)]), // 0kg は数えない。kg の最初の回
+      workout('k2', '2026-10-14', [set(42.5, 10)]),
+    ],
+  };
+  const h = exerciseHistory(d, 'e1', TODAY);
+  assert.deepEqual(h.map((w) => [w.id, w.best, w.up]), [['k2', true, 2.5], ['k1', false, null], ['bw', false, null]]);
 });
 
 test('形のおかしい記録・セットは飛ばして落ちない', () => {

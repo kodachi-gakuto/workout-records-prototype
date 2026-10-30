@@ -293,6 +293,44 @@ export function bestWeight(data, exerciseId) {
   return max;
 }
 
+// kind "kg" のセットの重さの最大（bestWeight と同じ数え方）。なければ null
+function kgMax(sets) {
+  let max = null;
+  for (const s of sets) {
+    if (s.kind === 'kg' && isNum(s.weight) && s.weight > 0 && (max === null || s.weight > max)) max = s.weight;
+  }
+  return max;
+}
+
+// 種目の履歴：今日より前の記録を新しい順に [{ id, date, startedAt, sets, best, up }]。
+// sets は空でないものだけ。空のセットしかない記録は出さない。同じ日は startedAt の新しいほうが先。
+// best：その回の kg の最大が、それより前の全部の回の kg の最大を超えた（前に kg の記録がない回は false）。
+// up：その回の kg の最大が、直前の kg のセットがある回の kg の最大より重いときの差（kg）。そうでなければ null
+export function exerciseHistory(data, exerciseId, today = todayString()) {
+  const list = [];
+  for (const w of workoutsOf(data)) {
+    if (!isValidWorkout(w) || w.exerciseId !== exerciseId || !(w.date < today)) continue;
+    const sets = cleanSets(w.sets).filter((s) => !isEmptySet(s));
+    if (sets.length) list.push({ id: w.id, date: w.date, startedAt: String(w.startedAt ?? ''), sets });
+  }
+  // 古い順に並べて、前の回と比べる（sort は安定なので、同じ日・同じ startedAt は保存の順）
+  list.sort((a, b) => byText(a.date, b.date) || byText(a.startedAt, b.startedAt));
+  let allMax = null;
+  let lastMax = null;
+  const rows = list.map((w) => {
+    const max = kgMax(w.sets);
+    const best = max !== null && allMax !== null && max > allMax;
+    // 小数の誤差が出ないよう、1000分の1で丸める（重さは小数2けたまで）
+    const up = max !== null && lastMax !== null && max > lastMax ? Math.round((max - lastMax) * 1000) / 1000 : null;
+    if (max !== null) {
+      if (allMax === null || max > allMax) allMax = max;
+      lastMax = max;
+    }
+    return { ...w, best, up };
+  });
+  return rows.reverse();
+}
+
 // ---- 入力の文字と数字 ----
 
 // 打った文字を、欄に入れてよい形にする（重さは小数1つまで、回数は整数）

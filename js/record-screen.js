@@ -8,7 +8,7 @@ import {
   REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
 } from './records.js';
 import { todayString } from './store.js';
-import { esc, partsHtml } from './ui.js';
+import { esc, partsHtml, setListHtml } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
@@ -17,6 +17,7 @@ const LONG_MS = 500; // 長押し
 const LONG_MOVE = 10; // 押している間にこれ以上動いたら長押しをやめる（px）
 
 // fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
+// 履歴の画面へ行くときは、app.js が unmount せずに suspend して隠しておき、戻ったら resume する（今日の入力を残すため）
 export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   const exercise = findExercise(ctx.getData(), exerciseId);
   if (!exercise) {
@@ -114,7 +115,10 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
         <h1 class="ttl">${esc(exercise.name)}</h1>
         <span class="bst" id="rec-best"></span>
       </div>
-      <h2 class="lab">前回</h2>
+      <div class="lab-row">
+        <h2 class="lab">前回</h2>
+        ${prev ? '<button type="button" class="more" id="rec-hist">履歴 ›</button>' : ''}
+      </div>
       <div class="card prev" id="rec-prev"></div>
       <h2 class="lab">今回</h2>
       <div class="card" id="rec-sets"></div>
@@ -150,13 +154,11 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       el.innerHTML = '<p class="first">初めての記録です</p>';
       return;
     }
-    const rows = prev.sets.map((s, i) =>
-      `<span>${i + 1}</span><span>${partsHtml(weightParts(s))}</span><span>${partsHtml(repsParts(s))}</span><span></span>`).join('');
     el.innerHTML = `
       <button type="button" class="hd" id="rec-fold" aria-expanded="${prevOpen}">
         <span>${esc(shortDate(prev.date))}</span><span class="chev" aria-hidden="true">${prevOpen ? '▾' : '▸'}</span>
       </button>
-      ${prevOpen ? `<div class="plist">${rows}</div>` : ''}`;
+      ${prevOpen ? setListHtml(prev.sets) : ''}`;
     $('rec-fold').addEventListener('click', () => { prevOpen = !prevOpen; renderPrev(); });
   }
 
@@ -543,6 +545,12 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     ctx.replace('#/select');
   }
 
+  // 履歴の画面へ（キーボードが出ていたら閉じてから）
+  function onHistory() {
+    endEditing();
+    ctx.go(`#/history/${encodeURIComponent(exerciseId)}${fromHome ? '?from=home' : ''}`);
+  }
+
   // ---- つなぐ ----
   const main = root.querySelector('.rec');
   main.addEventListener('focusin', onFocusIn);
@@ -553,6 +561,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     if (del) deleteRow(Number(del.dataset.del));
   });
   $('rec-add').addEventListener('click', addRow);
+  $('rec-hist')?.addEventListener('click', onHistory);
   $('rec-back').addEventListener('click', () => ctx.replace(fromHome ? '#/' : '#/select'));
   const save = $('rec-save');
   save.addEventListener('pointerdown', onSaveDown);
@@ -616,6 +625,19 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       window.removeEventListener('resize', onViewport);
       const next = cleaned();
       if (next) ctx.commit(next);
+    },
+    // 履歴の画面へ行くとき：入力・案内・シートを閉じるだけ（行と今日の入力はそのまま残す）
+    suspend() {
+      hideUndo();
+      endEditing();
+      closeBar();
+      closeRest();
+      cancelPress();
+      suppressClick = false;
+    },
+    // 履歴の画面から戻ったとき
+    resume() {
+      renderTimer();
     },
     // ページを閉じるとき：画面の状態は変えずに、空のセットを除いたものを保存だけする
     flush() {

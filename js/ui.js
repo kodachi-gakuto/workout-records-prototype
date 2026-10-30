@@ -1,4 +1,5 @@
-// 画面の小さな部品（文字のエスケープ・上の案内）
+// 画面の小さな部品（文字のエスケープ・上の案内・前回のセットの一覧）
+import { weightParts, repsParts } from './records.js';
 
 export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,6 +11,13 @@ export function partsHtml(parts) {
     const cls = [p.extra ? 'ex' : '', i > 0 && !p.tight ? 'gap' : ''].filter(Boolean).join(' ');
     return `<span${cls ? ` class="${cls}"` : ''}>${esc(p.text)}${p.caret ? '<i class="caret"></i>' : ''}${p.unit ? `<small class="u">${esc(p.unit)}</small>` : ''}</span>`;
   }).join('');
+}
+
+// セットごとの縦の一覧（記録の画面の「前回」と、履歴の画面のカード）
+export function setListHtml(sets) {
+  const rows = sets.map((s, i) =>
+    `<span>${i + 1}</span><span>${partsHtml(weightParts(s))}</span><span>${partsHtml(repsParts(s))}</span><span></span>`).join('');
+  return `<div class="plist">${rows}</div>`;
 }
 
 let topTimer = null;
