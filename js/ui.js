@@ -13,10 +13,20 @@ export function partsHtml(parts) {
   }).join('');
 }
 
-// セットごとの縦の一覧（記録の画面の「前回」と、履歴の画面のカード）
+// 前回の一覧の1つの値。単位（kg・回）の左はしを全部の行でそろえるため、数字まで（左）と単位から（右）に分ける
+function alignedHtml(parts) {
+  const list = parts ?? [];
+  const at = list.findIndex((p) => p.unit);
+  if (at < 0) return `<span class="vn">${partsHtml(list)}</span><span class="vu"></span>`;
+  const head = list.slice(0, at + 1).map((p, i) => (i === at ? { ...p, unit: undefined } : p));
+  const tail = [{ text: '', unit: list[at].unit, tight: true }, ...list.slice(at + 1)];
+  return `<span class="vn">${partsHtml(head)}</span><span class="vu">${partsHtml(tail)}</span>`;
+}
+
+// セットごとの縦の一覧（記録の画面の「前回」と、履歴の画面のカード）。列は「今回」の行と同じ
 export function setListHtml(sets) {
   const rows = sets.map((s, i) =>
-    `<span>${i + 1}</span><span>${partsHtml(weightParts(s))}</span><span>${partsHtml(repsParts(s))}</span><span></span>`).join('');
+    `<div class="prow"><span>${i + 1}</span><span class="v">${alignedHtml(weightParts(s))}</span><span class="v">${alignedHtml(repsParts(s))}</span><span></span></div>`).join('');
   return `<div class="plist">${rows}</div>`;
 }
 

@@ -775,23 +775,36 @@ html.lg .ttl {
   font-size: var(--t-sub);
   color: var(--text-sub);
 }
-/* 1つの grid にして、kg・回の位置を全部の行でそろえる */
+/* 列は「今回」の行（.srow）と同じ。線は行全体に通す */
 .plist {
-  display: grid;
-  grid-template-columns: 1.6em auto auto 1fr;
-  column-gap: 20px;
   font-size: var(--t-sub);
   font-variant-numeric: tabular-nums;
 }
-.plist > span {
+.prow {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: baseline;
   padding: 6px 0;
   border-top: 1px solid var(--line);
-  text-align: right;
+}
+.prow > span:first-child {
+  color: var(--text-sub);
+}
+/* 値：数字までを右に、単位からを左に寄せ、単位の左はしを全部の行で列の真ん中にそろえる */
+.prow .v {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   white-space: nowrap;
 }
-.plist > span:nth-child(4n + 1) {
+.prow .vn {
+  text-align: right;
+}
+.prow .vu {
   text-align: left;
-  color: var(--text-sub);
+}
+.prow .vu small.u:first-child {
+  margin-left: 2px;
 }
 small.u {
   font-size: var(--t-foot);
