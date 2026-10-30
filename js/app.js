@@ -111,3 +111,9 @@ function main() {
 }
 
 main();
+
+// 電波がなくても開けるように、サービスワーカーを登録する（失敗しても画面は動き続ける）
+// 新しい版が入っても自動で読み直さない（次に開いたときに新しい版になる）
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+}
