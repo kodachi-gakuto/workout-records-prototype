@@ -1,7 +1,7 @@
 // ホーム：日付・部位のバランス（直近30日）・今日の種目と、下に固定の「＋ 記録する」
 import { partBalance, todayExercises, dateLabel, BALANCE_DAYS } from './records.js';
 import { todayString } from './store.js';
-import { esc } from './ui.js';
+import { esc, iconHtml } from './ui.js';
 
 export function mountHome(root, ctx, { recovered = false } = {}) {
   const today = todayString();
@@ -22,7 +22,7 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
       <button type="button" class="trow" data-id="${esc(r.exerciseId)}">
         <span class="nm">${esc(r.name)}</span>
         <span class="cnt">${r.sets}セット</span>
-        <span class="chev" aria-hidden="true">›</span>
+        <span class="chev">${iconHtml('chevronRight')}</span>
       </button>`).join('')
     : '<p class="none">まだ記録がありません</p>';
 
@@ -36,7 +36,7 @@ export function mountHome(root, ctx, { recovered = false } = {}) {
       <div class="hcard" id="home-today">${todayHtml}</div>
     </main>
     <div class="hfoot">
-      <a class="cta" href="#/select">＋ 記録する</a>
+      <a class="cta" href="#/select">${iconHtml('plusInline')}<span>記録する</span></a>
     </div>`;
 
   // ホームから開いたことを hash で渡す（記録の画面の左上を「‹ ホーム」にする）

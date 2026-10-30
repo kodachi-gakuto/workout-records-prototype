@@ -88,8 +88,8 @@ export function mountSelect(root, ctx, { restore = false } = {}) {
           <button type="button" class="dl" data-act="del" tabindex="-1">削除</button>
         </div>
         <button type="button" class="fg" data-act="open">
-          <span class="tx"><span class="nm">${esc(e.name)}</span>${n ? `<span class="cnt"><span class="ck" aria-hidden="true">✓</span> ${n}セット</span>` : ''}</span>
-          <span class="chev" aria-hidden="true">›</span>
+          <span class="tx"><span class="nm">${esc(e.name)}</span>${n ? `<span class="cnt"><span class="ck">${iconHtml('checkmark')}</span>${n}セット</span>` : ''}</span>
+          <span class="chev">${iconHtml('chevronRight')}</span>
         </button>
       </div>`;
   }

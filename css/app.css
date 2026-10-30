@@ -176,7 +176,8 @@ html.lg .trow .nm {
 }
 .trow .chev {
   flex: 0 0 auto;
-  font-size: 1.2rem;
+  display: inline-flex;
+  font-size: var(--t-head);
   color: var(--text-sub);
 }
 
@@ -362,13 +363,19 @@ html.lg .fg .nm {
   font-size: var(--t-foot);
   color: var(--text-sub);
 }
+.fg .cnt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
 .fg .ck {
+  display: inline-flex;
   color: var(--accent);
-  font-weight: 700;
 }
 .fg .chev {
   flex: 0 0 auto;
-  font-size: 1.2rem;
+  display: inline-flex;
+  font-size: var(--t-head);
   color: var(--text-sub);
 }
 
@@ -790,7 +797,8 @@ html.lg .ttl {
   text-align: left;
 }
 .prev .hd .chev {
-  font-size: var(--t-foot);
+  display: inline-flex;
+  font-size: var(--t-sub);
   font-weight: 400;
   color: var(--text-sub);
 }
@@ -821,7 +829,7 @@ html.lg .ttl {
 /* 値：数字までを右に、単位からを左に寄せ、単位の左はしを全部の行で列の真ん中にそろえる */
 .prow .v {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* 中身の長さで半分の位置がずれないように */
   white-space: nowrap;
 }
 .prow .vn {
@@ -957,6 +965,17 @@ small.u {
   width: 36px;
   padding-left: 5px;
 }
+.in .cbtn i svg {
+  display: block;
+}
+.in .cbtn i .g-ccw {
+  width: 11px;
+  height: 11px;
+}
+.in .cbtn i .g-x {
+  width: 9px;
+  height: 9px;
+}
 .in .cbtn i {
   display: flex;
   align-items: center;
@@ -979,8 +998,11 @@ small.u {
 }
 
 .x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
-  font-size: 1.2rem;
+  font-size: var(--t-head);
   color: var(--text-sub); /* 5.33 */
 }
 
@@ -1237,4 +1259,56 @@ html.lg .hist .ttl {
 .disp .gap,
 .plist .gap {
   margin-left: 0.3em;
+}
+
+/* 文字の横に置くアイコンの絵（枠 .icf は ui.js。大きさは文字に合わせて em） */
+.icf .i-chevr {
+  width: 0.42em; /* 17px で 7px */
+  height: 0.72em; /* 12px */
+}
+.icf .i-plusi {
+  width: 0.82em; /* 17px で 14px */
+  height: 0.82em;
+}
+.icf .i-x {
+  width: 0.7em; /* 12px */
+  height: 0.7em;
+}
+.icf .i-check {
+  width: 0.78em; /* 13px で 10px */
+  height: 0.65em;
+}
+.icf .i-up {
+  width: 0.62em; /* 13px で 8px */
+  height: 0.85em;
+}
+/* アイコンと文字を並べるボタン（＋ 記録する・＋ セットを追加・履歴 ›） */
+.cta,
+.addset,
+.lab-row .more {
+  gap: 4px;
+}
+.lab-row .more {
+  display: inline-flex;
+  align-items: center;
+}
+.lab-row .more .icf {
+  color: var(--text-sub);
+}
+.kstep button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.hist .hd .mark,
+.hist .hd .mark .up {
+  display: inline-flex;
+  align-items: center;
+}
+.hist .hd .mark {
+  gap: 6px;
+}
+.icf .i-chevd {
+  width: 0.72em; /* 15px で 11px */
+  height: 0.42em;
 }

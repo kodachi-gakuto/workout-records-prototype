@@ -8,7 +8,7 @@ import {
   firstMissing, todaySetCount, FIELD_INPUT, REST_CHOICES, restSecOf, setRestSec, needsTimerHint, markTimerHint,
 } from './records.js';
 import { todayString } from './store.js';
-import { esc, iconHtml, partsHtml, setListHtml, showTopToast } from './ui.js';
+import { esc, GLYPHS, iconHtml, partsHtml, setListHtml, showTopToast } from './ui.js';
 
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
@@ -130,12 +130,12 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
       </div>
       <div class="lab-row">
         <h2 class="lab">前回</h2>
-        ${prev ? '<button type="button" class="more" id="rec-hist">履歴 ›</button>' : ''}
+        ${prev ? '<button type="button" class="more" id="rec-hist"><span>履歴</span>' + iconHtml('chevronRight') + '</button>' : ''}
       </div>
       <div class="card prev" id="rec-prev"></div>
       <h2 class="lab">今回</h2>
       <div class="card" id="rec-sets"></div>
-      <button type="button" class="addset" id="rec-add">＋ セットを追加</button>
+      <button type="button" class="addset" id="rec-add">${iconHtml('plusInline')}<span>セットを追加</span></button>
     </main>
     <button type="button" class="tm" id="rec-timer">⏱<span id="rec-time"></span></button>
     <div class="ov" id="rest-ov" hidden>
@@ -178,7 +178,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     }
     el.innerHTML = `
       <button type="button" class="hd" id="rec-fold" aria-expanded="${prevOpen}">
-        <span>${esc(shortDate(prev.date))}</span><span class="chev" aria-hidden="true">${prevOpen ? '▾' : '▸'}</span>
+        <span>${esc(shortDate(prev.date))}</span><span class="chev">${iconHtml(prevOpen ? 'chevronDown' : 'chevronRight')}</span>
       </button>
       ${prevOpen ? setListHtml(prev.sets) : ''}`;
     $('rec-fold').addEventListener('click', () => { prevOpen = !prevOpen; renderPrev(); });
@@ -232,7 +232,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     el.innerHTML = list.length
       ? list.map((_, i) => `<div class="srow" data-i="${i}">
           <span class="no">${i + 1}</span>${cellHtml('w', i)}${cellHtml('r', i)}
-          <button type="button" class="x" data-del="${i}" aria-label="${i + 1}セット目を消す">×</button>
+          <button type="button" class="x" data-del="${i}" aria-label="${i + 1}セット目を消す">${iconHtml('xmark')}</button>
         </div>`).join('')
       : '<p class="nosets">セットがありません</p>';
     updateCells();
@@ -260,7 +260,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
         if (kind) {
           const name = field === 'w' ? '重さ' : '回数';
           btn.dataset.kind = kind;
-          btn.firstElementChild.textContent = kind === 'copy' ? '↺' : '×';
+          btn.firstElementChild.innerHTML = kind === 'copy' ? GLYPHS.copy : GLYPHS.clear;
           btn.setAttribute('aria-label', kind === 'copy' ? `上のセットの${name}を入れる` : `${name}を消す`);
         }
         // 丸のぶん狭くなって文字がはみ出すときは、小さめの文字にする
@@ -308,9 +308,9 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
     kseg.className = 'kseg kstep';
     kseg.setAttribute('aria-label', '手伝ってもらった回数');
     kseg.innerHTML = `
-      <button type="button" data-step="-1" aria-label="補助を1回減らす" aria-disabled="${n === 0}">−</button>
+      <button type="button" data-step="-1" aria-label="補助を1回減らす" aria-disabled="${n === 0}">${iconHtml('minusInline')}</button>
       <span class="n" aria-live="polite">補助 ${n}</span>
-      <button type="button" data-step="1" aria-label="補助を1回増やす" aria-disabled="${!canAddAssist(s)}">＋</button>`;
+      <button type="button" data-step="1" aria-label="補助を1回増やす" aria-disabled="${!canAddAssist(s)}">${iconHtml('plusInline')}</button>`;
   }
 
   // 回数を打ちかえたら、「＋」を押せるか（補助は reps まで）だけを直す
