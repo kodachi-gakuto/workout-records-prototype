@@ -28,26 +28,24 @@ test('空のデータの形', () => {
   assert.equal(d.version, CURRENT_VERSION);
   assert.deepEqual(d.exercises, []);
   assert.deepEqual(d.workouts, []);
-  assert.equal(d.timer, null);
-  assert.deepEqual(d.flags, { timerHintShown: false });
+  assert.equal('timer' in d, false);
+  assert.equal('flags' in d, false);
 });
 
 test('保存して読むと同じ', () => {
   const s = fakeStorage();
   const data = createEmptyData();
-  data.exercises.push({ id: 'e1', name: 'ベンチプレス', part: 'chest', restSec: 120, createdAt: '2026-10-28T00:00:00.000Z' });
+  data.exercises.push({ id: 'e1', name: 'ベンチプレス', part: 'chest', createdAt: '2026-10-28T00:00:00.000Z' });
   data.workouts.push({
     id: 'w1', exerciseId: 'e1', date: '2026-10-28', startedAt: '2026-10-28T00:00:00.000Z',
     sets: [{ kind: 'kg', weight: 60, reps: 10, assistedReps: 2 }, { kind: 'bodyweight', weight: null, reps: 8, assistedReps: null }],
   });
-  data.timer = { exerciseId: 'e1', endsAt: 1761600000000 };
   assert.deepEqual(saveData(data, s), { ok: true });
   assert.deepEqual(loadData(s), { data, recoveredKey: null });
 });
 
 test('今の版のデータはそのまま', () => {
   const d = createEmptyData();
-  d.flags.timerHintShown = true;
   assert.deepEqual(migrate(structuredClone(d)), d);
 });
 
@@ -100,15 +98,12 @@ test('足りない所は既定値で補う', () => {
   assert.equal(r.recoveredKey, null);
   assert.deepEqual(r.data.exercises, [{ id: 'e1' }]);
   assert.deepEqual(r.data.workouts, []);
-  assert.equal(r.data.timer, null);
-  assert.deepEqual(r.data.flags, { timerHintShown: false });
 });
 
 test('補えない形（配列でないなど）は退避して空のデータ', () => {
   for (const text of [
     '{"version":1,"exercises":{}}',
     '{"version":1,"workouts":"x"}',
-    '{"version":1,"flags":[]}',
   ]) {
     const s = fakeStorage();
     s.setItem(STORAGE_KEY, text);
@@ -119,20 +114,22 @@ test('補えない形（配列でないなど）は退避して空のデータ',
   assert.equal(normalize(null), null);
 });
 
-test('timer の形がおかしい（5・"x"・[] など）ときは、データを捨てずに timer だけ null にする', () => {
-  for (const timer of ['5', '"x"', '[]', 'true']) {
-    const text = `{"version":1,"exercises":[{"id":"e1"}],"workouts":[{"id":"w1"}],"timer":${timer}}`;
+test('休憩タイマーの名残（timer・flags・種目の restSec）は読むときに落とし、記録は残す', () => {
+  for (const timer of ['5', '"x"', '[]', 'true', '{"exerciseId":"e1","endsAt":1}']) {
+    const text = `{"version":1,"exercises":[{"id":"e1","name":"ベンチ","restSec":90}],"workouts":[{"id":"w1"}],"timer":${timer},"flags":{"timerHintShown":true}}`;
     const s = fakeStorage();
     s.setItem(STORAGE_KEY, text);
     const r = loadData(s);
     assert.equal(r.recoveredKey, null, timer);
-    assert.equal(r.data.timer, null, timer);
+    assert.equal('timer' in r.data, false, timer);
+    assert.equal('flags' in r.data, false, timer);
     assert.deepEqual(r.data.workouts, [{ id: 'w1' }], timer);
-    assert.deepEqual(r.data.exercises, [{ id: 'e1' }], timer);
+    assert.deepEqual(r.data.exercises, [{ id: 'e1', name: 'ベンチ' }], timer);
     assert.equal(s.getItem(STORAGE_KEY), text, timer);
     assert.equal(keysWith(s, BROKEN_KEY_PREFIX).length, 0, timer);
   }
-  assert.equal(normalize({ version: 1, timer: [] }).timer, null);
+  // 形のおかしい flags でも、データを捨てない
+  assert.deepEqual(normalize({ version: 1, flags: [] }), { version: 1, exercises: [], workouts: [] });
   // 保存するときも、退避しない
   const s = fakeStorage();
   s.setItem(STORAGE_KEY, '{"version":1,"workouts":[],"timer":5}');

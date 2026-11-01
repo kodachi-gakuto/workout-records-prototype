@@ -5,7 +5,7 @@ import {
   addExercise, findExercise, listExercises, findTodayWorkout, ensureTodayWorkout,
   updateSet, addSet, insertSet, removeSet, removeEmptySets, previousWorkout, bestWeight,
   emptySet, isEmptySet, cleanSets, sanitizeInput, parseNumber, weightParts, repsParts, editParts, partsText, canAddAssist,
-  shortDate, mmss, elapsedText, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
+  shortDate, NAME_MAX, cutName, tidyName, hasSameName, updateExercise, deleteExercise,
   todaySetCount, exercisesByPart, addDays, partBalance, todayExercises, dateLabel, exerciseHistory,
   firstMissing, FIELD_INPUT,
 } from '../js/records.js';
@@ -28,7 +28,6 @@ test('種目を足す（元の data は変えない）', () => {
   const { data, exercise } = addExercise(before, { name: 'スクワット', part: 'legs', id: 'x' });
   assert.equal(before.exercises.length, 0);
   assert.deepEqual(data.exercises, [exercise]);
-  assert.equal(exercise.restSec, 120);
   assert.equal(findExercise(data, 'x').name, 'スクワット');
   assert.equal(findExercise(data, 'nope'), null);
 });
@@ -302,9 +301,6 @@ test('表示の文字', () => {
   assert.equal(partsText(repsParts(set(60, 8.5, 'kg', 2))), '8.5回（補助2）');
   assert.equal(shortDate('2026-10-19'), '10/19');
   assert.equal(shortDate('x'), '');
-  assert.equal(mmss(120), '2:00');
-  assert.equal(mmss(90), '1:30');
-  assert.equal(mmss(undefined), '2:00');
 });
 
 test('打っている間の欄の文字：打った文字に「自重」「kg」「回」「（補助N）」を添える', () => {
@@ -342,7 +338,7 @@ test('手伝ってもらった回数を増やせるのは reps まで。reps が
 
 // ---- 種目の登録・編集・削除 ----
 
-const ex = (id, name, part, createdAt) => ({ id, name, part, restSec: 120, createdAt });
+const ex = (id, name, part, createdAt) => ({ id, name, part, createdAt });
 
 test('名前を整える：前後の空白を取り、25文字で切る', () => {
   assert.equal(NAME_MAX, 25);
@@ -379,23 +375,17 @@ test('種目の名前と部位を書きかえる（ほかの項目と元の data
   assert.equal(before.exercises[0].name, 'ベンチ');
 });
 
-test('種目を消すと、その種目の記録も消え、タイマーが指していれば null にする', () => {
+test('種目を消すと、その種目の記録も消える', () => {
   const before = {
     ...createEmptyData(),
     exercises: [ex('e1', 'ベンチ', 'chest'), ex('e2', '懸垂', 'back')],
     workouts: [workout('a', '2026-10-01', [set(60, 10)]), workout('b', TODAY, [], 'e2'), workout('c', TODAY, [set(1, 1)]),
       { id: 'bad', exerciseId: 'e1' }],
-    timer: { exerciseId: 'e1', endsAt: 1 },
   };
   const d = deleteExercise(before, 'e1');
   assert.deepEqual(d.exercises.map((e) => e.id), ['e2']);
   assert.deepEqual(d.workouts.map((w) => w.id), ['b']);
-  assert.equal(d.timer, null);
   assert.equal(before.exercises.length, 2);
-  // ほかの種目を指すタイマーはそのまま
-  const timer = { exerciseId: 'e2', endsAt: 1 };
-  assert.equal(deleteExercise({ ...before, timer }, 'e1').timer, timer);
-  assert.equal(deleteExercise({ ...before, timer: null }, 'e1').timer, null);
 });
 
 test('今日のセットの数：今日の記録の空でないセットだけ', () => {
@@ -580,13 +570,4 @@ test('ホームの日付の見出し', () => {
   assert.equal(dateLabel('2026-11-01'), '11月1日（日）');
   assert.equal(dateLabel('2026-10-31'), '10月31日（土）');
   assert.equal(dateLabel('bad'), '');
-});
-
-test('休憩が終わったときの経過の言葉', () => {
-  assert.equal(elapsedText(120), '2分');
-  assert.equal(elapsedText(90), '1分30秒');
-  assert.equal(elapsedText(30), '30秒');
-  assert.equal(elapsedText(300), '5分');
-  assert.equal(elapsedText(null), null);
-  assert.equal(elapsedText(0), null);
 });

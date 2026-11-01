@@ -5,7 +5,6 @@ export const STORAGE_KEY = 'wrp:data'; // 今後変えない
 export const BROKEN_KEY_PREFIX = 'wrp:data:broken:';
 export const BACKUP_KEY_PREFIX = 'wrp:data:backup:v';
 export const CURRENT_VERSION = 1;
-export const DEFAULT_REST_SEC = 120;
 
 export const PARTS = [
   { id: 'chest', label: '胸' },
@@ -21,8 +20,6 @@ export function createEmptyData() {
     version: CURRENT_VERSION,
     exercises: [],
     workouts: [],
-    timer: null,
-    flags: { timerHintShown: false },
   };
 }
 
@@ -56,20 +53,18 @@ export function migrate(raw, migrations = MIGRATIONS, currentVersion = CURRENT_V
 // 今の版の中身の形をそろえる。足りない所は既定値で補い、補えない形なら null
 export function normalize(data) {
   if (!isPlainObject(data)) return null;
-  const exercises = data.exercises ?? [];
-  const workouts = data.workouts ?? [];
-  // timer の形がおかしいだけなら、データ全体は捨てずに timer を null にする
-  const timer = isPlainObject(data.timer) ? data.timer : null;
-  const flags = data.flags ?? {};
+  // 休憩タイマーの名残（timer・flags・種目の restSec）は読むときに落とす
+  const { timer, flags, ...rest } = data;
+  const exercises = rest.exercises ?? [];
+  const workouts = rest.workouts ?? [];
   if (!Array.isArray(exercises) || !Array.isArray(workouts)) return null;
-  if (!isPlainObject(flags)) return null;
-  return {
-    ...data,
-    exercises,
-    workouts,
-    timer,
-    flags: { ...flags, timerHintShown: flags.timerHintShown ?? false },
-  };
+  return { ...rest, exercises: exercises.map(withoutRestSec), workouts };
+}
+
+function withoutRestSec(exercise) {
+  if (!isPlainObject(exercise)) return exercise;
+  const { restSec, ...rest } = exercise;
+  return rest;
 }
 
 // 読めない中身を消さずに別のキーへ退避する。退避に失敗したら例外のまま（wrp:data は変えない）

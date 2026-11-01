@@ -4,7 +4,7 @@
 // localStorage には触らない
 
 const CACHE_PREFIX = 'wrp-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 // ページを開く要求で、これだけ待ってもネットワークが返さなければキャッシュを返す
 const NAVIGATE_TIMEOUT_MS = 4000;
 
@@ -24,7 +24,6 @@ const PRECACHE_URLS = [
   './js/records.js',
   './js/select-screen.js',
   './js/store.js',
-  './js/timer.js',
   './js/ui.js',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',

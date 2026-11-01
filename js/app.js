@@ -8,8 +8,6 @@ import { mountRecord } from './record-screen.js';
 import { mountSelect } from './select-screen.js';
 import { mountHistory } from './history-screen.js';
 import { esc, showTopToast } from './ui.js';
-import { createTimerWatch } from './timer.js';
-import { elapsedText } from './records.js';
 
 const app = document.getElementById('app');
 // 履歴の画面はここに出す（記録の画面を app に隠したまま残せるように）
@@ -34,30 +32,6 @@ const ctx = {
   // 履歴を積まずに移る（戻るで同じ画面に戻らないように）
   replace: (hash) => { location.replace(hash); },
 };
-// 休憩タイマーの見張り（画面をまたいで動く。記録の画面は表示だけ）
-ctx.timer = createTimerWatch(ctx);
-
-// 休憩が終わったら、どの画面でも真ん中に知らせを出す（OK か後ろを押すまで消えない）
-function showTimerDone({ sec }) {
-  const ov = document.getElementById('done-ov');
-  const text = elapsedText(sec);
-  document.getElementById('done-text').textContent = text ? `${text}たちました` : '休憩の時間がたちました';
-  // 入力中ならキーボードを閉じる（打った数字は入力のたびに保存ずみ）
-  if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
-  ov.hidden = false;
-  document.getElementById('done-ok').focus({ preventScroll: true });
-}
-function closeTimerDone() {
-  document.getElementById('done-ov').hidden = true;
-}
-document.getElementById('done-ok').addEventListener('click', closeTimerDone);
-// 後ろ（暗い所）を押しても、OK と同じく閉じる
-document.getElementById('done-ov').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeTimerDone();
-});
-ctx.timer.subscribe((ev) => {
-  if (ev.type === 'done') showTimerDone(ev);
-});
 
 // hash を { page, id, fromHome } にする。壊れた hash の id は null（「種目が見つかりません」にする）
 function parseHash(hash) {
@@ -76,7 +50,7 @@ function route() {
   const next = parseHash(location.hash);
   const cur = state.screen;
   state.screen = null;
-  // 記録の画面 → 同じ種目の履歴：記録の画面は閉じずに隠しておく（今日の入力・空の行・タイマーの表示をそのまま残す）
+  // 記録の画面 → 同じ種目の履歴：記録の画面は閉じずに隠しておく（今日の入力・空の行をそのまま残す）
   const toOwnHistory = state.page === 'record' && next.page === 'history'
     && next.id === state.id && next.fromHome === state.fromHome;
   if (cur && toOwnHistory && cur.suspend) {
@@ -148,7 +122,6 @@ function main() {
   }
   // 開き直したときはホームから（hash が #/ 以外なら、履歴を積まずに #/ にする）
   if (location.hash !== '#/') history.replaceState(null, '', location.pathname + location.search + '#/');
-  ctx.timer.start();
   window.addEventListener('hashchange', route);
   // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
   // 履歴の画面を開いている間は、隠しておいた記録の画面も

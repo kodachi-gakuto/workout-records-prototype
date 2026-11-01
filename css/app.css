@@ -563,7 +563,7 @@ body.sheet-open {
   font-weight: 600;
   color: var(--text);
 }
-/* 休憩の時間。下から出る */
+/* 下から出るシート */
 .rsheet {
   position: fixed;
   left: 0;
@@ -573,9 +573,6 @@ body.sheet-open {
   background: var(--surface);
   border-radius: 14px 14px 0 0;
   animation: sheet-up 0.25s ease;
-}
-.eh .rc {
-  justify-self: end;
 }
 /* 空の欄があるまま離れるときの確かめ */
 .msheet {
@@ -612,25 +609,6 @@ body.sheet-open {
   background: var(--field);
   color: var(--text);
 }
-.rgrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-2);
-  padding: var(--sp-4) var(--side) var(--sp-6);
-}
-.rgrid button {
-  min-height: 48px;
-  border-radius: 10px;
-  background: var(--field);
-  color: var(--text);
-  font-size: max(19px, 1.12rem); /* 選んだボタンは白の上の文字（3.4）なので、大きい文字の基準 */
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.rgrid button[aria-pressed="true"] {
-  background: var(--accent);
-  color: var(--on-accent);
-}
 @media (prefers-reduced-motion: reduce) {
   .ov,
   .esheet,
@@ -645,7 +623,7 @@ body.sheet-open {
 
 /* ---- 記録の画面 ---- */
 .rec {
-  padding: 0 var(--side) calc(120px + env(safe-area-inset-bottom)); /* タイマーの丸に隠れない余白 */
+  padding: 0 var(--side) calc(96px + env(safe-area-inset-bottom)); /* 「元に戻す」の案内に隠れない余白 */
 }
 body.kb-open .rec {
   padding-bottom: 60vh; /* キーボードが出ている間、下の行もバーの上まで上げられるように */
@@ -1050,75 +1028,6 @@ small.u {
   color: var(--text);
 }
 
-/* タイマー。押すと始まる／止まる、長押しで休憩の時間のシート */
-.tm {
-  position: fixed;
-  right: calc(var(--side) + env(safe-area-inset-right));
-  bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
-  z-index: 6;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--outline), 0 4px 16px rgba(0, 0, 0, 0.18); /* ダークでは影が見えないので、枠で縁を出す */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--t-foot);
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-body.kb-open .tm {
-  display: none;
-}
-/* 長押しで文字の選択・メニューを出さない */
-.tm,
-.kbar .tbtn {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: none;
-}
-/* 休憩が終わったときの知らせ（真ん中のカード） */
-.done-ov {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 calc(var(--sp-6) + env(safe-area-inset-right)) 0 calc(var(--sp-6) + env(safe-area-inset-left));
-}
-.done {
-  width: 100%;
-  max-width: 320px;
-  padding: var(--sp-6) var(--card-x) var(--sp-4);
-  border-radius: 18px;
-  background: var(--surface);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-.done-t {
-  margin: 0;
-  font-size: var(--t-title3);
-  font-weight: 700;
-  color: var(--text);
-}
-.done-s {
-  margin: 0 0 var(--sp-2); /* gap 8 と足して、文→ボタン 16 */
-  color: var(--text-sub);
-}
-.done-ok {
-  min-height: 48px;
-  border-radius: 14px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: max(19px, 1.12rem); /* 白い文字（3.4）なので、大きい文字の基準 */
-  font-weight: 700;
-}
-
 /* キーボードの上のバー */
 .kbar {
   position: fixed;
@@ -1189,19 +1098,6 @@ body.kb-open .tm {
   gap: var(--sp-1);
   flex: 0 0 auto;
 }
-.kbar .tbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  min-height: 44px;
-  padding: 0 var(--sp-3);
-  border-radius: 999px;
-  background: var(--seg-on);
-  border: 1px solid var(--outline);
-  font-weight: 700;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
 .kbar .fin {
   min-height: 44px;
   min-width: 44px;
@@ -1229,7 +1125,7 @@ body.kb-open .tm {
   font-size: var(--t-sub);
 }
 .toast.bottom {
-  bottom: calc(var(--sp-6) + 64px + var(--sp-3) + env(safe-area-inset-bottom)); /* タイマーの丸（下 24・高さ 64）の上 12 */
+  bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
 }
 .toast.top {
   top: calc(44px + var(--sp-2) + env(safe-area-inset-top)); /* 上のバー（44）の下 8 */
@@ -1342,10 +1238,6 @@ html.lg .hist .ttl {
   width: 0.72em; /* 15px で 11px */
   height: 0.42em;
 }
-.icf .i-timer {
-  width: 1em;
-  height: 1em;
-}
 .icf .i-trophy {
   width: 1em;
   height: 1em;
@@ -1362,32 +1254,4 @@ html.lg .hist .ttl {
 .hist .hd .mark .icf:has(.i-trophy),
 #toast-top .icf {
   color: var(--accent);
-}
-/* タイマー：止まっている間は白い丸にオレンジの時計、動いている間はオレンジの丸に白い時計と 19 の太字（オレンジの上の白い文字は大きい文字の基準） */
-.tm .icf {
-  color: var(--accent);
-}
-.tm.run {
-  background: var(--accent);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-  color: var(--on-accent);
-  font-size: max(19px, 1.12rem);
-}
-.tm.run .icf {
-  color: var(--on-accent);
-  font-size: var(--t-foot); /* 時計の大きさは止まっている間と同じ */
-}
-/* キーボードの上のタイマーも、丸いタイマーと同じ決まり（止まっている間はオレンジの時計、動いている間はオレンジの地に白い時計と 19 の太字） */
-.kbar .tbtn .icf {
-  color: var(--accent);
-}
-.kbar .tbtn.run {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
-  font-size: max(19px, 1.12rem);
-}
-.kbar .tbtn.run .icf {
-  color: var(--on-accent);
-  font-size: var(--t-sub); /* 時計の大きさは止まっている間と同じ */
 }
