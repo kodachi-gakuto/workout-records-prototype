@@ -785,6 +785,23 @@ html.lg .ttl {
   font-weight: 400;
   color: var(--text-sub);
 }
+/* 記録の画面の前回は詰める（打っている間も前回と入力の行が一緒に見えるように）。日付の行の見た目は 36、押せる範囲は 44 */
+.rec .prev .hd {
+  position: relative;
+  min-height: 36px;
+}
+.rec .prev .hd::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+.rec .prow {
+  min-height: 28px;
+  padding: 2px 0;
+}
+.rec .prev + .lab {
+  margin-top: var(--sp-6);
+}
 .prev .first {
   margin: 0;
   min-height: 44px;

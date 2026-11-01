@@ -14,8 +14,9 @@ const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助
 const UNDO_MS = 3000;
 
 // fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
+// focusFirst：タップで開いたとき。今日の記録がまだなければ、1セット目の重さから打てるようにする
 // 履歴の画面へ行くときは、app.js が unmount せずに suspend して隠しておき、戻ったら resume する（今日の入力を残すため）
-export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
+export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirst = false } = {}) {
   const exercise = findExercise(ctx.getData(), exerciseId);
   if (!exercise) {
     const back = fromHome ? '<a href="#/">ホームに戻る</a>' : '<a href="#/select">種目に戻る</a>';
@@ -580,6 +581,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false } = {}) {
   renderBest();
   renderPrev();
   renderRows();
+  if (focusFirst && pending.length) $('rec-sets').querySelector('input')?.focus({ preventScroll: true });
 
   return {
     // 画面を離れるとき：空のセットを取り除いて保存する

@@ -23,12 +23,19 @@ function commit(data) {
   return result;
 }
 
+let routedHash = null; // ctx.go で移った先（続いて来る hashchange を無視するため）
+
 const ctx = {
   getData: () => state.data,
   commit,
   // 画面を閉じるときに、画面の状態は変えずに保存だけする
   saveOnly: (data) => saveData(data),
-  go: (hash) => { location.hash = hash; },
+  // タップの中で画面を作る（iOS はタップの中でないと、入力欄にフォーカスしてもキーボードが出ない）
+  go: (hash) => {
+    location.hash = hash;
+    routedHash = location.hash;
+    route({ tapped: true });
+  },
   // 履歴を積まずに移る（戻るで同じ画面に戻らないように）
   replace: (hash) => { location.replace(hash); },
 };
@@ -46,7 +53,7 @@ function parseHash(hash) {
   return { page: m[1], id, fromHome: m[3] === 'from=home' };
 }
 
-function route() {
+function route({ tapped = false } = {}) {
   const next = parseHash(location.hash);
   const cur = state.screen;
   state.screen = null;
@@ -91,7 +98,7 @@ function route() {
     // 種目を選ぶ画面から開いた記録の画面から戻ったときは、記録の画面を開く前のスクロールの位置
     state.screen = mountSelect(app, ctx, { restore: from === 'record' && !wasFromHome });
   } else if (next.page === 'record') {
-    state.screen = mountRecord(app, ctx, next.id, { fromHome: next.fromHome });
+    state.screen = mountRecord(app, ctx, next.id, { fromHome: next.fromHome, focusFirst: tapped });
   } else if (onHistory) {
     state.screen = mountHistory(sub, ctx, next.id, { fromHome: next.fromHome });
   } else {
@@ -122,7 +129,12 @@ function main() {
   }
   // 開き直したときはホームから（hash が #/ 以外なら、履歴を積まずに #/ にする）
   if (location.hash !== '#/') history.replaceState(null, '', location.pathname + location.search + '#/');
-  window.addEventListener('hashchange', route);
+  window.addEventListener('hashchange', () => {
+    // ctx.go で作り終えた画面は、作り直さない
+    const done = location.hash === routedHash;
+    routedHash = null;
+    if (!done) route();
+  });
   // 閉じるとき：記録の画面なら空のセットを取り除いて保存する
   // 履歴の画面を開いている間は、隠しておいた記録の画面も
   const flushAll = () => {

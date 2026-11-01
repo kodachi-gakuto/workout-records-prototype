@@ -4,7 +4,7 @@
 // localStorage には触らない
 
 const CACHE_PREFIX = 'wrp-';
-const CACHE_NAME = `${CACHE_PREFIX}v2`;
+const CACHE_NAME = `${CACHE_PREFIX}v3`;
 // ページを開く要求で、これだけ待ってもネットワークが返さなければキャッシュを返す
 const NAVIGATE_TIMEOUT_MS = 4000;
 
