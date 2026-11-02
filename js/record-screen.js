@@ -13,7 +13,7 @@ import { esc, GLYPHS, iconHtml, partsHtml, setListHtml, showTopToast } from './u
 const WEIGHT_MODES = [['kg', 'kg'], ['bodyweight', '自重'], ['assist', '補助']];
 const UNDO_MS = 3000;
 
-// fromHome：ホームから開いたとき。左上を「‹ ホーム」にし、押すとホームへ戻る
+// fromHome：ホームから開いたとき。左上の「‹」を押すとホームへ戻る
 // focusFirst：タップで開いたとき。今日の記録がまだなければ、1セット目の重さから打てるようにする
 // 履歴の画面へ行くときは、app.js が unmount せずに suspend して隠しておき、戻ったら resume する（今日の入力を残すため）
 export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirst = false } = {}) {
@@ -45,7 +45,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirs
       pending = Array.from({ length: 3 }, () => emptySet(prev?.sets[0]?.kind));
     }
   }
-  // 右上の 🏆：開いたときの値のまま変えない（打っている間も、セットを消しても）。離れるときの「新記録」もこれと比べる
+  // 最高記録の行：開いたときの値のまま変えない（打っている間も、セットを消しても）。離れるときの「新記録」もこれと比べる
   const openBest = bestWeight(ctx.getData(), exerciseId);
 
   // focus：{ input, index, field: 'w' | 'r' }
@@ -53,7 +53,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirs
   let undo = null; // { set, index, timer }
   let prevOpen = true; // 開くたびに、いつも開いた状態から
   let alive = true;
-  let leaving = false; // 「保存」「‹ 種目」「‹ ホーム」で離れるとき（離れたあとに上の案内を出す）
+  let leaving = false; // 「保存」「‹」で離れるとき（離れたあとに上の案内を出す）
   let confirmHash = null; // 空の欄の確かめのシートを開いている間、離れる先
 
   const workout = () => findTodayWorkout(ctx.getData(), exerciseId, today);
@@ -116,13 +116,11 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirs
   root.innerHTML = `
     <main class="rec">
       <div class="navb">
-        <button type="button" class="back" id="rec-back">${iconHtml('chevronLeft')}<span class="bl">${fromHome ? 'ホーム' : '種目'}</span></button>
+        <button type="button" class="back" id="rec-back" aria-label="${fromHome ? 'ホーム' : '種目'}に戻る">${iconHtml('chevronLeft')}</button>
+        <h1 class="barname">${esc(exercise.name)}</h1>
         <button type="button" class="save" id="rec-save">保存</button>
       </div>
-      <div class="ttl-row">
-        <h1 class="ttl">${esc(exercise.name)}</h1>
-        <span class="bst" id="rec-best"></span>
-      </div>
+      <div class="bline" id="rec-best"></div>
       <div class="lab-row">
         <h2 class="lab">前回</h2>
         ${prev ? '<button type="button" class="more" id="rec-hist"><span>履歴</span>' + iconHtml('chevronRight') + '</button>' : ''}
@@ -150,7 +148,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirs
   function renderBest() {
     const el = $('rec-best');
     el.hidden = openBest === null;
-    el.innerHTML = openBest === null ? '' : `${iconHtml('trophy')}<b>${esc(openBest)}</b>kg`;
+    el.innerHTML = openBest === null ? '' : `<span>最高記録</span><span class="bst">${iconHtml('trophy')}<span><b>${esc(openBest)}</b><small class="u">kg</small></span></span>`;
   }
 
   function renderPrev() {
@@ -476,7 +474,7 @@ export function mountRecord(root, ctx, exerciseId, { fromHome = false, focusFirs
     leave('#/select');
   }
 
-  // 「保存」「‹ 種目」「‹ ホーム」で離れる。空でないのに欠けているセットがあれば、先にシートで確かめる
+  // 「保存」「‹」で離れる。空でないのに欠けているセットがあれば、先にシートで確かめる
   function leave(hash) {
     endEditing();
     const miss = firstMissing(sets());

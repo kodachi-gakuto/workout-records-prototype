@@ -690,12 +690,6 @@ body.kb-open .rec {
   cursor: default;
 }
 
-.ttl-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
-  margin: var(--sp-1) 0 0;
-}
 .ttl {
   flex: 1 1 auto;
   min-width: 0;
@@ -707,9 +701,6 @@ body.kb-open .rec {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-html.lg .ttl-row {
-  flex-wrap: wrap;
-}
 html.lg .ttl {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -717,15 +708,59 @@ html.lg .ttl {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.bst {
-  flex: 0 0 auto;
+/* 記録の画面：上のバーの真ん中の種目名（この画面で一番低い情報なので 15） */
+.rec .navb {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+}
+.rec .navb .back {
+  justify-self: start;
+}
+.rec .navb .save {
+  justify-self: end;
+}
+.barname {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--t-sub);
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.lg .barname {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+/* 記録の画面：名前つきの最高記録の行 */
+.bline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 28px;
+  margin-bottom: var(--sp-2);
   font-size: var(--t-sub);
   color: var(--text-sub);
+}
+.bst {
+  flex: 0 0 auto;
+  font-size: var(--t-head);
+  color: var(--text);
   white-space: nowrap;
 }
 .bst b {
-  color: var(--text);
   font-weight: 700;
+}
+.bst small.u {
+  margin-left: 2px; /* 数字と単位の字間（文字の組みの調整。余白の段階の対象外） */
+}
+.rec .lab-row {
+  margin-top: 0;
 }
 
 /* 見出し「前回」と右はしの「履歴 ›」 */
